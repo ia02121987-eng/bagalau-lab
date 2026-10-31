@@ -18,6 +18,13 @@ h2{margin:0 0 14px;font-size:20px}h3{margin:0 0 8px;font-size:16px}.muted{color:
 <body><div class="wrap">
 <header class="top"><div class="brand"><div class="logo">✓</div><div><h1>Бағалау <span style="color:var(--cyan)">LAB</span></h1><p>Тапсырма сайын бағалау • мұғалім тақтасы • оқушы режимі</p></div></div><div class="row" style="flex:0 1 auto"><span id="connectionStatus" class="status">Демо режимі</span><button class="secondary" onclick="openSettings()">⚙ Қосу баптауы</button></div></header>
 <div id="globalNotice"></div>
+<section id="passwordRecoveryPanel" class="panel hidden" style="border-color:var(--cyan)">
+<h2>🔑 Жаңа құпиясөз орнату</h2>
+<p class="muted">Электрондық поштаңыздағы қалпына келтіру сілтемесі арқылы ашылған бет. Жаңа құпиясөзді екі рет енгізіңіз.</p>
+<div class="grid"><div class="span6 field"><label>Жаңа құпиясөз</label><input id="recoveryNewPassword" type="password" autocomplete="new-password" minlength="12" placeholder="Кемінде 12 таңба"></div><div class="span6 field"><label>Құпиясөзді қайталаңыз</label><input id="recoveryConfirmPassword" type="password" autocomplete="new-password" minlength="12" placeholder="Қайта енгізіңіз"></div></div>
+<div class="actions"><button id="recoverySaveButton" onclick="saveRecoveredPassword()">Жаңа құпиясөзді сақтау</button></div>
+<div id="recoveryStatus" class="notice">Қалпына келтіру сілтемесі тексерілуде...</div>
+</section>
 <nav class="tabs"><button class="tab active" id="tabTeacher" onclick="showView('teacher')">👩‍🏫 Мұғалім</button><button class="tab" id="tabStudent" onclick="showView('student')">🎒 Оқушы</button><button class="tab" id="tabResults" onclick="showView('results')">📊 Нәтижелер</button></nav>
 <section id="teacherView">
 <div class="grid">
@@ -323,7 +330,63 @@ async function teacherLoadResults(){
   }catch(e){teacherStatus('Қате: '+(e.message||e),'error')}
 }
 
+// Supabase құпиясөзді қалпына келтіру сілтемесін өңдеу.
+let recoveryReady=false;
+function recoveryMessage(message,kind=''){
+  const el=$('recoveryStatus');el.textContent=message;el.className='notice '+kind;
+}
+async function initializePasswordRecovery(){
+  const query=new URLSearchParams(location.search);
+  const fragment=new URLSearchParams(location.hash.replace(/^#/,''));
+  const isRecovery=query.get('type')==='recovery'||fragment.get('type')==='recovery'||query.has('token_hash')||query.has('code')||fragment.has('access_token');
+  if(!isRecovery)return;
+  const panel=$('passwordRecoveryPanel');panel.classList.remove('hidden');
+  panel.scrollIntoView({block:'start'});
+  try{
+    const client=await teacherGetClient();
+    let authError=null;
+    if(query.get('token_hash')&&query.get('type')==='recovery'){
+      const {error}=await client.auth.verifyOtp({token_hash:query.get('token_hash'),type:'recovery'});
+      authError=error;
+    }else if(query.get('code')){
+      const {error}=await client.auth.exchangeCodeForSession(query.get('code'));
+      authError=error;
+    }
+    if(authError)throw authError;
+    // Supabase JS хэш-токенді автоматты өңдеуі үшін сессияны тексереміз.
+    let {data:{session:activeSession},error:sessionError}=await client.auth.getSession();
+    if(sessionError)throw sessionError;
+    if(!activeSession&&fragment.get('access_token')&&fragment.get('refresh_token')){
+      const {data,error}=await client.auth.setSession({access_token:fragment.get('access_token'),refresh_token:fragment.get('refresh_token')});
+      if(error)throw error;
+      activeSession=data.session;
+    }
+    if(!activeSession)throw new Error('Сілтеме жарамсыз немесе мерзімі өткен. Жаңа қалпына келтіру хатын сұраңыз.');
+    recoveryReady=true;
+    recoveryMessage('Сілтеме расталды. Жаңа құпиясөзді енгізіңіз.','good');
+    history.replaceState(null,'',location.pathname);
+  }catch(e){recoveryReady=false;recoveryMessage('Қалпына келтіру қатесі: '+(e.message||e),'error')}
+}
+async function saveRecoveredPassword(){
+  const password=$('recoveryNewPassword').value;
+  const confirm=$('recoveryConfirmPassword').value;
+  if(!recoveryReady){recoveryMessage('Алдымен электрондық поштадағы қалпына келтіру сілтемесін ашыңыз.','warn');return}
+  if(password.length<12){recoveryMessage('Құпиясөз кемінде 12 таңбадан тұруы керек.','warn');return}
+  if(password!==confirm){recoveryMessage('Екі құпиясөз сәйкес келмейді.','warn');return}
+  const button=$('recoverySaveButton');button.disabled=true;
+  try{
+    const client=await teacherGetClient();
+    const {error}=await client.auth.updateUser({password});
+    if(error)throw error;
+    $('recoveryNewPassword').value='';$('recoveryConfirmPassword').value='';
+    recoveryMessage('Құпиясөз сәтті өзгертілді! Енді «📊 Нәтижелер» бөліміне өтіп, мұғалім ретінде кіріңіз.','good');
+    recoveryReady=false;
+  }catch(e){recoveryMessage('Сақтау қатесі: '+(e.message||e),'error')}
+  finally{button.disabled=false}
+}
+
 taskTypeChanged();
 const params=new URLSearchParams(location.search);if(params.get('join')){$('joinCode').value=params.get('join');showView('student');scheduleRosterLookup()}
 boot();
+initializePasswordRecovery();
 </script></body></html>
