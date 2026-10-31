@@ -307,7 +307,7 @@ function renderTeacherRanking(result){
       const attempts=result.submissions.filter(x=>x.student_id===p.id&&x.task_id===t.id);
       if(attempts.length){completed++;total+=Number(attempts[0].score||0);}
     }
-    return {name:p.name,total,completed};
+    return {id:p.id,name:p.name,total,completed};
   }).sort((a,b)=>b.total-a.total||b.completed-a.completed||a.name.localeCompare(b.name,'kk'));
   const table=document.createElement('table');
   const thead=document.createElement('thead');
@@ -365,23 +365,33 @@ function toggleHorseRace(){
 }
 function renderHorseRace(result){
   lastRaceSignature=raceSignature(result);
-  const area=$('teacherHorseRace');area.replaceChildren();
+  const area=$('teacherHorseRace');
+  const previousPositions=new Map();
+  area.querySelectorAll('.race-lane[data-student-id]').forEach(lane=>{
+    const horse=lane.querySelector('.race-horse');
+    if(horse)previousPositions.set(lane.dataset.studentId,horse.style.left);
+  });
+  area.replaceChildren();
   const head=document.createElement('div');head.className='race-head';
   const title=document.createElement('h3');title.textContent='🐎 Логикалық амалдар — Тұлпар бәйгесі';
   const max=result.tasks.reduce((n,t)=>n+Number(t.points||0),0);
   const cap=document.createElement('span');cap.className='badge';cap.textContent='Мәре: '+max+' ұпай';
-  head.append(title,cap);area.append(head);
+  const live=document.createElement('span');
+  live.className='badge ok';
+  live.id='raceLiveStatus';
+  live.textContent='● Автоматты жаңарту: 5 секунд';
+  head.append(title,live,cap);area.append(head);
   const scores=result.students.map(p=>{
     let total=0,completed=0;
     for(const t of result.tasks){
       const attempts=result.submissions.filter(x=>x.student_id===p.id&&x.task_id===t.id);
       if(attempts.length){completed++;total+=Number(attempts[0].score||0);}
     }
-    return {name:p.name,total,completed};
+    return {id:p.id,name:p.name,total,completed};
   }).sort((a,b)=>b.total-a.total||b.completed-a.completed||a.name.localeCompare(b.name,'kk'));
   const track=document.createElement('div');track.className='race-track';
   for(const p of scores){
-    const lane=document.createElement('div');lane.className='race-lane';
+    const lane=document.createElement('div');lane.className='race-lane';lane.dataset.studentId=p.id;
     const name=document.createElement('div');name.className='race-name';name.textContent=p.name;
     const course=document.createElement('div');course.className='race-course';
     const horse=document.createElement('span');horse.className='race-horse';horse.textContent='🐎';
@@ -390,7 +400,18 @@ function renderHorseRace(result){
     const score=document.createElement('div');score.className='race-score';score.textContent=p.total+'/'+max;
     lane.append(name,course,score);track.append(lane);
     const pct=max>0?Math.min(100,Math.max(0,p.total/max*100)):0;
-    requestAnimationFrame(()=>{horse.style.left=`calc(${pct}% - ${pct/100*35}px)`;});
+    const destination=`calc(${pct}% - ${pct/100*35}px)`;
+    const previous=previousPositions.get(p.id);
+    if(previous!==undefined){
+      horse.style.transition='none';
+      horse.style.left=previous;
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        horse.style.transition='';
+        horse.style.left=destination;
+      }));
+    }else{
+      horse.style.left=destination;
+    }
   }
   area.append(track);
   const note=document.createElement('p');note.className='race-note';
@@ -428,6 +449,10 @@ async function teacherLoadResults(silent=false){
     const result=await response.json();
     if(!response.ok||!result.success)throw new Error(result.error||'Нәтижелер жүктелмеді');
     latestRankingData=result;
+    if(raceVisible){
+      const live=$('raceLiveStatus');
+      if(live){live.textContent='● Автоматты жаңарту: 5 секунд · Тексерілді '+new Date().toLocaleTimeString('kk-KZ');live.style.color='#9af3cf';}
+    }
     if(rankingVisible)renderTeacherRanking(result);
     if(raceVisible&&raceSignature(result)!==lastRaceSignature)renderHorseRace(result);
     const area=$('secureTeacherResults');
@@ -462,7 +487,11 @@ async function teacherLoadResults(silent=false){
     }
     table.append(tbody);area.append(table);
     if(!silent)teacherStatus('Нәтижелер жаңартылды. Барлығы '+result.submissions.length+' жауап тіркелген.','good');
-  }catch(e){if(!silent)teacherStatus('Қате: '+(e.message||e),'error');else console.warn('Автоматты жаңарту қатесі:',e)}
+  }catch(e){if(!silent)teacherStatus('Қате: '+(e.message||e),'error');else {
+      const live=$('raceLiveStatus');
+      if(live){live.textContent='⚠ Жаңарту қатесі — қайта тексеріледі';live.style.color='#ffcf70';}
+      console.warn('Автоматты жаңарту қатесі:',e);
+    }}
 }
 
 // Supabase құпиясөзді қалпына келтіру сілтемесін өңдеу.
