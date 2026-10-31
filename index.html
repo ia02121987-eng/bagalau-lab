@@ -48,6 +48,8 @@ h2{margin:0 0 14px;font-size:20px}h3{margin:0 0 8px;font-size:16px}.muted{color:
 </div>
 <div class="actions"><button onclick="teacherLogin()">Мұғалім ретінде кіру</button><button class="secondary" onclick="teacherLoadResults()">Нәтижелерді жаңарту</button><button class="ghost" onclick="teacherLogout()">Шығу</button></div>
 <div id="teacherAuthStatus" class="notice">Мұғалім аккаунтыңызбен кіріңіз.</div>
+<div class="actions" style="margin-top:12px"><button class="secondary" id="rankingToggle" onclick="toggleRanking()">🏆 Рейтингті көрсету</button></div>
+<div id="teacherRanking" class="hidden" aria-live="polite"></div>
 <div id="secureTeacherResults" class="tablewrap"></div>
 </div>
 </section>
@@ -275,9 +277,56 @@ async function teacherLogin(){
     await teacherLoadResults();
   }catch(e){teacherStatus('Кіру қатесі: '+(e.message||e),'error')}
 }
+let latestRankingData=null;
+let rankingVisible=false;
+function toggleRanking(){
+  rankingVisible=!rankingVisible;
+  $('teacherRanking').classList.toggle('hidden',!rankingVisible);
+  $('rankingToggle').textContent=rankingVisible?'🏆 Рейтингті жасыру':'🏆 Рейтингті көрсету';
+  if(rankingVisible&&latestRankingData)renderTeacherRanking(latestRankingData);
+}
+function renderTeacherRanking(result){
+  const area=$('teacherRanking');
+  area.replaceChildren();
+  const title=document.createElement('h3');title.textContent='🏆 Оқушылар рейтингі';area.append(title);
+  const max=result.tasks.reduce((n,t)=>n+Number(t.points||0),0);
+  const scores=result.students.map(p=>{
+    let total=0,completed=0;
+    for(const t of result.tasks){
+      const attempts=result.submissions.filter(x=>x.student_id===p.id&&x.task_id===t.id);
+      if(attempts.length){completed++;total+=Number(attempts[0].score||0);}
+    }
+    return {name:p.name,total,completed};
+  }).sort((a,b)=>b.total-a.total||b.completed-a.completed||a.name.localeCompare(b.name,'kk'));
+  const table=document.createElement('table');
+  const thead=document.createElement('thead');
+  const header=document.createElement('tr');
+  for(const v of ['Орын','Оқушы','Орындалғаны','Ұпай']){
+    const th=document.createElement('th');th.textContent=v;header.append(th);
+  }
+  thead.append(header);table.append(thead);
+  const body=document.createElement('tbody');
+  scores.forEach((p,i)=>{
+    const place=1+scores.filter(x=>x.total>p.total).length;
+    const tr=document.createElement('tr');
+    for(const value of [place===1&&p.total>0?'🥇 1':place===2&&p.total>0?'🥈 2':place===3&&p.total>0?'🥉 3':String(place),p.name,`${p.completed}/${result.tasks.length}`,`${p.total}/${max}`]){
+      const td=document.createElement('td');td.textContent=value;tr.append(td);
+    }
+    body.append(tr);
+  });
+  table.append(body);area.append(table);
+  const note=document.createElement('p');note.className='muted small';
+  note.textContent='Рейтинг нақты тапсырма нәтижелерінен есептеледі. Жаңарту үшін «Нәтижелерді жаңарту» батырмасын басыңыз.';
+  area.append(note);
+}
 async function teacherLogout(){
   try{const client=await teacherGetClient();await client.auth.signOut()}catch{}
   $('secureTeacherResults').replaceChildren();
+  $('teacherRanking').replaceChildren();
+  latestRankingData=null;
+  rankingVisible=false;
+  $('teacherRanking').classList.add('hidden');
+  $('rankingToggle').textContent='🏆 Рейтингті көрсету';
   teacherStatus('Мұғалім аккаунтынан шықтыңыз.');
 }
 async function teacherLoadResults(){
@@ -295,6 +344,8 @@ async function teacherLoadResults(){
     });
     const result=await response.json();
     if(!response.ok||!result.success)throw new Error(result.error||'Нәтижелер жүктелмеді');
+    latestRankingData=result;
+    if(rankingVisible)renderTeacherRanking(result);
     const area=$('secureTeacherResults');
     area.replaceChildren();
     const heading=document.createElement('h3');
