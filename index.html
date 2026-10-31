@@ -30,7 +30,20 @@ h2{margin:0 0 14px;font-size:20px}h3{margin:0 0 8px;font-size:16px}.muted{color:
 <section id="studentView" class="hidden"><div class="grid"><div class="panel span4"><h2>🎒 Сабаққа қосылу</h2><div class="field"><label>Сессия коды</label><input id="joinCode" placeholder="Мысалы: LG9A5" maxlength="5" style="text-transform:uppercase" oninput="scheduleRosterLookup()"></div><div class="field"><label>Оқушының аты-жөні</label><select id="studentName">
   <option value="">Алдымен сабақ кодын енгізіңіз</option>
 </select></div><button onclick="joinSession()">Сабаққа кіру</button><div id="studentJoinStatus" class="notice hidden"></div><p class="muted small">Мұғалім берген сессия кодын енгізіңіз.</p></div><div class="panel span8"><div class="row"><div><h2 id="studentLessonTitle">📚 Тапсырмалар</h2><p id="studentIdentity" class="muted">Сабаққа кіргеннен кейін тапсырмалар көрінеді.</p></div><div class="fit stat"><b id="studentTotal">0</b><span>Жиналған ұпай</span></div></div><div id="studentTasks" class="empty">Алдымен сабаққа қосылыңыз.</div></div></div></section>
-<section id="resultsView" class="hidden"><div class="panel"><div class="row"><div><h2>📊 Нәтижелер журналы</h2><p class="muted small">Әр оқушының әр тапсырмадан жинаған ұпайы.</p></div><div class="fit actions"><button class="secondary" onclick="exportCSV()">Excel/CSV жүктеу</button><button class="ghost" onclick="refreshAll()">Жаңарту</button></div></div><div id="resultsTable" class="empty">Нәтиже әзірге жоқ.</div></div></section>
+<section id="resultsView" class="hidden">
+<div class="panel">
+<h2>🔐 Мұғалімнің жеке кіруі</h2>
+<p class="muted small">Нәтижелер тек Supabase жүйесінде рұқсаты бар мұғалімге көрсетіледі.</p>
+<div class="grid">
+<div class="span4 field"><label>Электрондық пошта</label><input id="teacherEmail" type="email" autocomplete="username" placeholder="Электрондық поштаңыз"></div>
+<div class="span4 field"><label>Құпиясөз</label><input id="teacherPassword" type="password" autocomplete="current-password" placeholder="Supabase Auth құпиясөзі"></div>
+<div class="span4 field"><label>Сабақ коды</label><input id="teacherLessonCode" value="LG9A5" maxlength="5" style="text-transform:uppercase"></div>
+</div>
+<div class="actions"><button onclick="teacherLogin()">Мұғалім ретінде кіру</button><button class="secondary" onclick="teacherLoadResults()">Нәтижелерді жаңарту</button><button class="ghost" onclick="teacherLogout()">Шығу</button></div>
+<div id="teacherAuthStatus" class="notice">Мұғалім аккаунтыңызбен кіріңіз.</div>
+<div id="secureTeacherResults" class="tablewrap"></div>
+</div>
+<div class="panel"><div class="row"><div><h2>📊 Нәтижелер журналы</h2><p class="muted small">Әр оқушының әр тапсырмадан жинаған ұпайы.</p></div><div class="fit actions"><button class="secondary" onclick="exportCSV()">Excel/CSV жүктеу</button><button class="ghost" onclick="refreshAll()">Жаңарту</button></div></div><div id="resultsTable" class="empty">Нәтиже әзірге жоқ.</div></div></section>
 </div>
 <div id="settingsModal" class="hidden" style="position:fixed;inset:0;background:#030712eF;z-index:20;overflow:auto;padding:18px"><div class="panel" style="max-width:760px;margin:30px auto"><div class="row"><h2>⚙ Ортақ деректер базасын қосу</h2><button class="ghost fit" onclick="closeSettings()">✕</button></div><p class="muted">Әртүрлі құрылғыдан деректер алмасу үшін Supabase жобасының URL және anon/public key мәндерін енгізіңіз. Құпия service_role кілтін ешқашан браузерге енгізбеңіз.</p><div class="field"><label>Supabase Project URL</label><input id="sbUrl" placeholder="https://xxxx.supabase.co"></div><div class="field"><label>Supabase anon / publishable key</label><textarea id="sbKey" style="min-height:65px" placeholder="eyJ... немесе sb_publishable_..."></textarea></div><div class="actions"><button onclick="connectCloud()">Қосылу</button><button class="secondary" onclick="saveCloudSettings()">Баптауды сақтау</button><button class="ghost" onclick="disconnectCloud()">Демо режиміне қайту</button></div><div id="settingsStatus" class="notice">Алдымен төмендегі SQL файлын Supabase SQL Editor ішінде іске қосыңыз.</div><h3 style="margin-top:20px">Қосу реті</h3><ol class="muted"><li>supabase.com сайтында жоба ашыңыз.</li><li>Жобаңыздың SQL Editor бөліміне берілген <b>database_setup.sql</b> кодын орындаңыз.</li><li>Project URL мен anon/publishable key енгізіп, «Қосылу» батырмасын басыңыз.</li><li>Сессияны қайта ашыңыз. Мұғалім мен оқушы әртүрлі құрылғыдан сол кодпен қосыла алады.</li></ol></div></div>
 <script>
@@ -40,7 +53,7 @@ const LS='bagalau_lab_v1', CFG='bagalau_lab_supabase';
 function uid(){return Math.random().toString(36).slice(2,8).toUpperCase()}
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function note(msg,type=''){ $('globalNotice').innerHTML=`<div class="notice ${type}">${escapeHtml(msg)}</div>`;setTimeout(()=>{$('globalNotice').innerHTML=''},5000)}
-function showView(v){['teacher','student','results'].forEach(x=>{$(x+'View').classList.toggle('hidden',x!==v);$('tab'+x[0].toUpperCase()+x.slice(1)).classList.toggle('active',x===v)});if(v==='results')renderResults()}
+function showView(v){['teacher','student','results'].forEach(x=>{$(x+'View').classList.toggle('hidden',x!==v);$('tab'+x[0].toUpperCase()+x.slice(1)).classList.toggle('active',x===v)});if(v==='results'){renderResults();teacherCheckSession()}}
 function openSettings(){$('settingsModal').classList.remove('hidden');let c={};try{c=JSON.parse(localStorage.getItem(CFG)||'{}')}catch{}$('sbUrl').value=c.url||'';$('sbKey').value=c.key||''}
 function closeSettings(){$('settingsModal').classList.add('hidden')}
 function saveCloudSettings(){localStorage.setItem(CFG,JSON.stringify({url:$('sbUrl').value.trim(),key:$('sbKey').value.trim()}));$('settingsStatus').textContent='Баптау осы браузерде сақталды. Енді «Қосылу» батырмасын басыңыз.'}
@@ -215,6 +228,101 @@ async function refreshCloudSubmissions(){if(!cloud||!session)return;const {data,
 async function loadCloudSession(){if(!cloud||!session)return;const [tr,sr,ur]=await Promise.all([db.from('tasks').select('*').eq('session_id',session.id).order('created_at'),db.from('students').select('*').eq('session_id',session.id),db.from('submissions').select('*,students(name)').eq('session_id',session.id)]);if(tr.error)throw tr.error;if(sr.error)throw sr.error;if(ur.error)throw ur.error;tasks=(tr.data||[]).map(t=>({id:t.id,title:t.title,type:t.type,points:t.points,prompt:t.prompt,options:t.options||[],correct:t.correct,pairs:t.pairs||[],rubric:t.rubric||''}));roster=(sr.data||[]).map(s=>({id:s.id,name:s.name}));submissions=(ur.data||[]).map(s=>({id:s.id,studentId:s.student_id,studentName:s.students?.name||'',taskId:s.task_id,answer:s.answer,score:s.score,pending:s.pending,feedback:s.feedback}));saveLocal();renderStudentTasks();renderRoster();renderTasks();renderResults();updateStats()}
 function subscribeRealtime(){if(!cloud||!session)return;if(realtime){db.removeChannel(realtime);realtime=null}realtime=db.channel('bagalau-'+session.id).on('postgres_changes',{event:'*',schema:'public',table:'submissions',filter:'session_id=eq.'+session.id},()=>refreshCloudSubmissions().catch(()=>{})).on('postgres_changes',{event:'*',schema:'public',table:'tasks',filter:'session_id=eq.'+session.id},()=>loadCloudSession().catch(()=>{})).subscribe()}
 async function refreshAll(){if(cloud&&session){await loadCloudSession();note('Деректер жаңартылды.','good')}else{loadLocal();renderStudentTasks();renderRoster();renderTasks();renderResults();updateStats()}}
+
+let teacherAuthClient=null;
+async function teacherGetClient(){
+  if(!window.supabase)throw new Error('Supabase кітапханасы жүктелмеді');
+  const cfg=JSON.parse(localStorage.getItem(CFG)||'{}');
+  const url=cfg.url||$('sbUrl').value.trim();
+  const key=cfg.key||$('sbKey').value.trim();
+  if(!url||!key)throw new Error('Алдымен «⚙ Қосу баптауы» арқылы Supabase URL мен publishable key сақтаңыз');
+  if(!teacherAuthClient)teacherAuthClient=window.supabase.createClient(url,key,{
+    auth:{storageKey:'bagalau_teacher_auth',persistSession:true,autoRefreshToken:true}
+  });
+  return teacherAuthClient;
+}
+function teacherStatus(msg,kind=''){
+  const el=$('teacherAuthStatus');
+  el.textContent=msg;
+  el.className='notice '+kind;
+}
+async function teacherCheckSession(){
+  try{
+    const client=await teacherGetClient();
+    const {data}=await client.auth.getSession();
+    if(data.session)teacherStatus('Мұғалім жүйеге кірген. «Нәтижелерді жаңарту» батырмасын басыңыз.','good');
+  }catch(e){teacherStatus(e.message||String(e),'warn')}
+}
+async function teacherLogin(){
+  teacherStatus('Кіру тексерілуде...');
+  try{
+    const client=await teacherGetClient();
+    const email=$('teacherEmail').value.trim();
+    const password=$('teacherPassword').value;
+    if(!email||!password)throw new Error('Электрондық пошта мен құпиясөзді енгізіңіз');
+    const {data,error}=await client.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    if(!data.session)throw new Error('Сессия ашылмады');
+    $('teacherPassword').value='';
+    teacherStatus('Кіру сәтті. Нәтижелер жүктелуде...','good');
+    await teacherLoadResults();
+  }catch(e){teacherStatus('Кіру қатесі: '+(e.message||e),'error')}
+}
+async function teacherLogout(){
+  try{const client=await teacherGetClient();await client.auth.signOut()}catch{}
+  $('secureTeacherResults').replaceChildren();
+  teacherStatus('Мұғалім аккаунтынан шықтыңыз.');
+}
+async function teacherLoadResults(){
+  try{
+    const client=await teacherGetClient();
+    const {data:{session:authSession},error:authError}=await client.auth.getSession();
+    if(authError||!authSession)throw new Error('Алдымен мұғалім ретінде кіріңіз');
+    const code=$('teacherLessonCode').value.trim().toUpperCase();
+    if(!/^[A-Z0-9]{5}$/.test(code))throw new Error('5 таңбалы сабақ кодын енгізіңіз');
+    teacherStatus('Нәтижелер жүктелуде...');
+    const response=await fetch(STUDENT_API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+authSession.access_token},
+      body:JSON.stringify({action:'getResults',code})
+    });
+    const result=await response.json();
+    if(!response.ok||!result.success)throw new Error(result.error||'Нәтижелер жүктелмеді');
+    const area=$('secureTeacherResults');
+    area.replaceChildren();
+    const heading=document.createElement('h3');
+    heading.textContent=`${result.session.title} — ${result.students.length} оқушы`;
+    area.append(heading);
+    const table=document.createElement('table');
+    const thead=document.createElement('thead');
+    const header=document.createElement('tr');
+    for(const label of ['Оқушы',...result.tasks.map(t=>t.title),'Барлығы']){
+      const th=document.createElement('th');th.textContent=label;header.append(th);
+    }
+    thead.append(header);table.append(thead);
+    const tbody=document.createElement('tbody');
+    const max=result.tasks.reduce((n,t)=>n+Number(t.points||0),0);
+    for(const pupil of result.students){
+      const tr=document.createElement('tr');
+      const name=document.createElement('td');name.textContent=pupil.name;tr.append(name);
+      let total=0;
+      for(const task of result.tasks){
+        const attempts=result.submissions.filter(x=>x.student_id===pupil.id&&x.task_id===task.id);
+        const attempt=attempts.length?attempts[0]:null;
+        const td=document.createElement('td');
+        if(attempt){total+=Number(attempt.score||0);td.textContent=`${attempt.score}/${task.points}`;}
+        else td.textContent='—';
+        tr.append(td);
+      }
+      const sum=document.createElement('td');
+      sum.textContent=`${total}/${max}`;
+      sum.className='score';tr.append(sum);tbody.append(tr);
+    }
+    table.append(tbody);area.append(table);
+    teacherStatus('Нәтижелер жаңартылды. Барлығы '+result.submissions.length+' жауап тіркелген.','good');
+  }catch(e){teacherStatus('Қате: '+(e.message||e),'error')}
+}
+
 taskTypeChanged();
 const params=new URLSearchParams(location.search);if(params.get('join')){$('joinCode').value=params.get('join');showView('student');scheduleRosterLookup()}
 boot();
