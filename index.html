@@ -157,17 +157,46 @@ async function joinSession(){
           radio.type='radio';
           radio.name='preview_'+t.id;
           radio.value=String(j);
-          radio.disabled=true;
+          radio.disabled=false;
           const text=document.createElement('span');
           text.textContent=String(option);
           line.append(radio,text);
           block.append(line);
         }
+        const send=document.createElement('button');
+        send.textContent='Жауапты жіберу';
+        const result=document.createElement('div');
+        result.className='notice hidden';
+        send.onclick=async()=>{
+          const checked=block.querySelector('input[type="radio"]:checked');
+          if(!checked){result.textContent='Алдымен жауапты таңдаңыз.';result.className='notice warn';return;}
+          send.disabled=true;
+          send.textContent='Жіберілуде...';
+          try{
+            const response=await fetch(STUDENT_API,{
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({action:'submitAnswer',code,studentId:student.id,taskId:t.id,answerIndex:Number(checked.value)})
+            });
+            const data=await response.json();
+            if(!response.ok||!data.success)throw new Error(data.error||'Жауап сақталмады');
+            result.textContent=`${data.feedback} Ұпай: ${data.score}/${data.maxPoints}`;
+            result.className='notice good';
+            send.textContent='Жауап қабылданды';
+            block.querySelectorAll('input[type="radio"]').forEach(x=>x.disabled=true);
+          }catch(e){
+            result.textContent='Қате: '+(e.message||e);
+            result.className='notice error';
+            send.textContent='Қайта жіберу';
+            send.disabled=false;
+          }
+        };
+        block.append(send,result);
         area.append(block);
       }
       const notice=document.createElement('div');
       notice.className='notice warn';
-      notice.textContent='Тапсырмалар көрсетілді. Жауап жіберу және автоматты бағалау келесі кезеңде қосылады.';
+      notice.textContent='Әр тапсырмаға бір рет жауап беріңіз. Ұпайды сервер есептейді.';
       area.append(notice);
     }
   }catch(e){
