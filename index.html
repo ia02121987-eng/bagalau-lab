@@ -90,12 +90,15 @@ async function lookupRoster(code){
   try{
     const response=await fetch(STUDENT_API,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      // Бұл endpoint оқушылар тізімін ортақ сабақ коды бойынша береді.
+      // Supabase-та Verify JWT with legacy secret = OFF болуы керек.
+      headers:{'Content-Type':'application/json',
+        ...(JSON.parse(localStorage.getItem(CFG)||'{}').key ? {'apikey':JSON.parse(localStorage.getItem(CFG)||'{}').key} : {})},
       body:JSON.stringify({action:'lookup',code})
     });
     const result=await response.json();
     if(serial!==lookupSerial || $('joinCode').value.trim().toUpperCase()!==code)return;
-    if(!response.ok||!result.success)throw new Error(result.error||'Сервер қатесі');
+    if(!response.ok||!result.success)throw new Error(result.message||result.error||'Сервер қатесі');
     selectedLesson=result;
     select.replaceChildren(new Option('Өз аты-жөніңізді таңдаңыз',''));
     for(const pupil of result.students||[]){
