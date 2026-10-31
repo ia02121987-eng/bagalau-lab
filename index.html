@@ -331,17 +331,40 @@ function renderTeacherRanking(result){
   area.append(note);
 }
 let raceVisible=false;
+let raceRefreshTimer=null;
+let raceRefreshBusy=false;
+let lastRaceSignature='';
+function raceSignature(result){
+  return JSON.stringify([result.tasks.map(t=>[t.id,t.points]),result.students.map(p=>p.id),result.submissions.map(x=>[x.student_id,x.task_id,x.score]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)))]);
+}
+function stopRaceRefresh(){
+  if(raceRefreshTimer!==null){clearInterval(raceRefreshTimer);raceRefreshTimer=null;}
+}
+function startRaceRefresh(){
+  stopRaceRefresh();
+  raceRefreshTimer=setInterval(async()=>{
+    if(!raceVisible||document.hidden||raceRefreshBusy)return;
+    raceRefreshBusy=true;
+    try{await teacherLoadResults(true);}finally{raceRefreshBusy=false;}
+  },5000);
+}
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&raceVisible)teacherLoadResults(true);
+});
 function toggleHorseRace(){
   raceVisible=!raceVisible;
   $('teacherHorseRace').classList.toggle('hidden',!raceVisible);
   $('raceToggle').textContent=raceVisible?'🐎 Тұлпар бәйгесін жасыру':'🐎 Тұлпар бәйгесін көрсету';
   if(raceVisible){
+    lastRaceSignature='';
+    startRaceRefresh();
     if(latestRankingData)renderHorseRace(latestRankingData);
       
     else $('teacherHorseRace').textContent='Алдымен мұғалім ретінде кіріп, нәтижелерді жаңартыңыз.';
-  }
+  }else{stopRaceRefresh();}
 }
 function renderHorseRace(result){
+  lastRaceSignature=raceSignature(result);
   const area=$('teacherHorseRace');area.replaceChildren();
   const head=document.createElement('div');head.className='race-head';
   const title=document.createElement('h3');title.textContent='🐎 Логикалық амалдар — Тұлпар бәйгесі';
@@ -371,10 +394,11 @@ function renderHorseRace(result){
   }
   area.append(track);
   const note=document.createElement('p');note.className='race-note';
-  note.textContent='Тұлпарлар нақты ұпайға қарай қозғалады. Жаңа жауаптарды көру үшін «Нәтижелерді жаңарту» батырмасын басыңыз.';
+  note.textContent='Ұпайлар әр 5 секунд сайын автоматты жаңарады. Тұлпарлар жинаған ұпайға қарай алға жылжиды.';
   area.append(note);
 }
 async function teacherLogout(){
+  stopRaceRefresh();
   try{const client=await teacherGetClient();await client.auth.signOut()}catch{}
   $('secureTeacherResults').replaceChildren();
   $('teacherRanking').replaceChildren();
@@ -388,14 +412,14 @@ async function teacherLogout(){
   $('rankingToggle').textContent='🏆 Рейтингті көрсету';
   teacherStatus('Мұғалім аккаунтынан шықтыңыз.');
 }
-async function teacherLoadResults(){
+async function teacherLoadResults(silent=false){
   try{
     const client=await teacherGetClient();
     const {data:{session:authSession},error:authError}=await client.auth.getSession();
     if(authError||!authSession)throw new Error('Алдымен мұғалім ретінде кіріңіз');
     const code=$('teacherLessonCode').value.trim().toUpperCase();
     if(!/^[A-Z0-9]{5}$/.test(code))throw new Error('5 таңбалы сабақ кодын енгізіңіз');
-    teacherStatus('Нәтижелер жүктелуде...');
+    if(!silent)teacherStatus('Нәтижелер жүктелуде...');
     const response=await fetch(STUDENT_API,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+authSession.access_token},
@@ -405,7 +429,7 @@ async function teacherLoadResults(){
     if(!response.ok||!result.success)throw new Error(result.error||'Нәтижелер жүктелмеді');
     latestRankingData=result;
     if(rankingVisible)renderTeacherRanking(result);
-    if(raceVisible)renderHorseRace(result);
+    if(raceVisible&&raceSignature(result)!==lastRaceSignature)renderHorseRace(result);
     const area=$('secureTeacherResults');
     area.replaceChildren();
     const heading=document.createElement('h3');
@@ -437,8 +461,8 @@ async function teacherLoadResults(){
       sum.className='score';tr.append(sum);tbody.append(tr);
     }
     table.append(tbody);area.append(table);
-    teacherStatus('Нәтижелер жаңартылды. Барлығы '+result.submissions.length+' жауап тіркелген.','good');
-  }catch(e){teacherStatus('Қате: '+(e.message||e),'error')}
+    if(!silent)teacherStatus('Нәтижелер жаңартылды. Барлығы '+result.submissions.length+' жауап тіркелген.','good');
+  }catch(e){if(!silent)teacherStatus('Қате: '+(e.message||e),'error');else console.warn('Автоматты жаңарту қатесі:',e)}
 }
 
 // Supabase құпиясөзді қалпына келтіру сілтемесін өңдеу.
