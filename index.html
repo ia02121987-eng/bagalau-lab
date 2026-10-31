@@ -337,6 +337,7 @@ function toggleHorseRace(){
   $('raceToggle').textContent=raceVisible?'🐎 Тұлпар бәйгесін жасыру':'🐎 Тұлпар бәйгесін көрсету';
   if(raceVisible){
     if(latestRankingData)renderHorseRace(latestRankingData);
+      
     else $('teacherHorseRace').textContent='Алдымен мұғалім ретінде кіріп, нәтижелерді жаңартыңыз.';
   }
 }
