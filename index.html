@@ -70,6 +70,12 @@ h2{margin:0 0 14px;font-size:20px}h3{margin:0 0 8px;font-size:16px}.muted{color:
 <div class="actions"><button onclick="makeGroups()">🎲 2 топқа бөлу</button><button class="secondary" onclick="makePairs()">👥 Жұптарға бөлу</button><button class="ghost" onclick="renderGrouping()">🔄 Нәтижені жаңарту</button></div>
 <div id="groupingNotice" class="notice">Алдымен мұғалім ретінде кіріп, оқушылар нәтижесін жүктеңіз.</div>
 <div id="groupingGroups"></div><div id="groupingPairs"></div><div id="groupingWinner"></div>
+<div class="panel" id="manualGroupGradePanel" style="margin-top:16px;background:#17243b">
+<h2>📝 Топтық жұмысты бағалау (0–2 ұпай)</h2>
+<p class="muted small">Әр оқушыға жеке ұпай қойыңыз. Бұл әзірге мұғалім браузеріндегі сынақ нұсқасы: ұпайлар жергілікті сақталады, Supabase серверіне жіберілмейді. Нақты сабақтың ресми 10 ұпайлық нәтижесіне қосу үшін серверлік бағалау әрекеті қажет.</p>
+<div id="manualGradeNotice" class="notice">Нәтижелерді жүктегеннен кейін оқушылар пайда болады.</div>
+<div id="manualGradeRows"></div>
+</div>
 </div>
 <div id="secureTeacherResults" class="tablewrap"></div>
 </div>
@@ -518,13 +524,59 @@ function groupingMessage(message){$('groupingNotice').textContent=message}
 function groupingShuffle(items){const a=[...items];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function groupingNames(){return [$('groupName1').value.trim()||'1-топ',$('groupName2').value.trim()||'2-топ']}
 function groupingReady(){if(!latestRankingData||!latestRankingData.students?.length){groupingMessage('Алдымен мұғалім ретінде кіріп, нәтижелерді жүктеңіз.');return false}return true}
-function makeGroups(){if(!groupingReady())return;const ids=groupingShuffle(latestRankingData.students.map(x=>x.id));const mid=Math.ceil(ids.length/2);const state=groupingGet();state.groups=[ids.slice(0,mid),ids.slice(mid)];state.names=groupingNames();groupingSave(state);renderGrouping()}
-function makePairs(){if(!groupingReady())return;const ids=groupingShuffle(latestRankingData.students.map(x=>x.id));const pairs=[];if(ids.length%2===1&&ids.length>=3){while(ids.length>3)pairs.push(ids.splice(0,2));pairs.push(ids.splice(0,3))}else{while(ids.length)pairs.push(ids.splice(0,2))}const state=groupingGet();state.pairs=pairs;state.names=groupingNames();groupingSave(state);renderGrouping()}
+function makeGroups(){if(!groupingReady())return;const ids=groupingShuffle(latestRankingData.students.map(x=>x.id));const mid=Math.ceil(ids.length/2);const state=groupingGet();state.groups=[ids.slice(0,mid),ids.slice(mid)];state.names=groupingNames();groupingSave(state);renderGrouping();renderManualGrades()}
+function makePairs(){if(!groupingReady())return;const ids=groupingShuffle(latestRankingData.students.map(x=>x.id));const pairs=[];if(ids.length%2===1&&ids.length>=3){while(ids.length>3)pairs.push(ids.splice(0,2));pairs.push(ids.splice(0,3))}else{while(ids.length)pairs.push(ids.splice(0,2))}const state=groupingGet();state.pairs=pairs;state.names=groupingNames();groupingSave(state);renderGrouping();renderManualGrades()}
 function groupingScore(p,result){let sum=0;for(const t of result.tasks||[]){const attempt=result.submissions.find(x=>x.student_id===p.id&&x.task_id===t.id);if(attempt)sum+=Number(attempt.score)||0}return sum}
 function renderGrouping(){const groupsArea=$('groupingGroups'),pairsArea=$('groupingPairs'),winnerArea=$('groupingWinner');groupsArea.replaceChildren();pairsArea.replaceChildren();winnerArea.replaceChildren();if(!latestRankingData){groupingMessage('Алдымен мұғалім ретінде кіріп, нәтижелерді жүктеңіз.');return}const result=latestRankingData,st=groupingGet(),students=new Map(result.students.map(p=>[p.id,p]));if(st.names){$('groupName1').value=st.names[0]||'1-топ';$('groupName2').value=st.names[1]||'2-топ'}const names=st.names||groupingNames();groupingMessage('Оқушылар: '+students.size+'. Топтар мен жұптар құрамы осы браузерде сақталады.');
 if(st.groups){const title=document.createElement('h3');title.textContent='🏆 Топтар';groupsArea.append(title);const box=document.createElement('div');box.className='grid';const averages=[];for(let i=0;i<2;i++){const ids=(st.groups[i]||[]).filter(id=>students.has(id));const panel=document.createElement('div');panel.className='span6 task';const heading=document.createElement('h3');heading.textContent=names[i]||`${i+1}-топ`;panel.append(heading);const list=document.createElement('ol');for(const id of ids){const li=document.createElement('li');li.textContent=students.get(id).name;list.append(li)}panel.append(list);const avg=ids.length?ids.reduce((a,id)=>a+groupingScore(students.get(id),result),0)/ids.length:0;averages.push(avg);const label=document.createElement('p');label.className='score';label.textContent='Орташа ұпай: '+avg.toFixed(2)+' / '+result.tasks.reduce((a,t)=>a+Number(t.points||0),0);panel.append(label);box.append(panel)}groupsArea.append(box);const winner=document.createElement('div');winner.className='notice good';winner.textContent=averages[0]===averages[1]?'🤝 Екі топтың орташа ұпайы тең.':`🏆 Қазір алда: ${names[averages[0]>averages[1]?0:1]}!`;winnerArea.append(winner)}
 if(st.pairs){const title=document.createElement('h3');title.textContent='👥 Жұптар және үштік';pairsArea.append(title);const list=document.createElement('div');list.className='grid';st.pairs.forEach((ids,i)=>{const box=document.createElement('div');box.className='span6 task';const label=document.createElement('b');label.textContent=ids.length===3?'Үштік':`${i+1}-жұп`;box.append(label);const text=document.createElement('p');text.textContent=ids.map(id=>students.get(id)?.name||'Тізімнен шығарылған оқушы').join(' • ');box.append(text);list.append(box)});pairsArea.append(list)}
 if(!st.groups&&!st.pairs)groupingMessage('«2 топқа бөлу» немесе «Жұптарға бөлу» батырмасын басыңыз.');
+}
+
+// Мұғалімге арналған жергілікті бағалау жобасы. Серверлік баға ретінде көрсетілмейді.
+const MANUAL_GRADE_KEY='bagalau_manual_group_draft_v1';
+function manualGradeStorage(){try{return JSON.parse(localStorage.getItem(MANUAL_GRADE_KEY)||'{}')}catch{return {}}}
+function manualGradeDraft(){return manualGradeStorage()[groupingCode()]||{}}
+function setManualGrade(studentId,value){
+  if(!latestRankingData?.students?.some(p=>p.id===studentId))return;
+  const number=Number(value);
+  if(![0,1,2].includes(number))return;
+  const all=manualGradeStorage();
+  const code=groupingCode();
+  all[code]={...(all[code]||{}),[studentId]:number};
+  localStorage.setItem(MANUAL_GRADE_KEY,JSON.stringify(all));
+  renderManualGrades();
+}
+function renderManualGrades(){
+  const area=$('manualGradeRows'), notice=$('manualGradeNotice');
+  area.replaceChildren();
+  if(!latestRankingData){notice.textContent='Алдымен мұғалім ретінде кіріп, нәтижелерді жүктеңіз.';return;}
+  const st=groupingGet(), draft=manualGradeDraft();
+  const pupils=new Map(latestRankingData.students.map(p=>[p.id,p]));
+  if(!st.groups){notice.textContent='Алдымен «🎲 2 топқа бөлу» арқылы топтарды анықтаңыз.';return;}
+  notice.textContent='Сынақ бағалары тек осы браузерде сақталады. Сервердегі ұпайлар өзгермейді.';
+  const groups=st.groups, names=st.names||['Қыран','Құмай'];
+  const grid=document.createElement('div');grid.className='grid';
+  for(let i=0;i<2;i++){
+    const box=document.createElement('div');box.className='span6 task';
+    const heading=document.createElement('h3');heading.textContent=names[i]||`${i+1}-топ`;box.append(heading);
+    const ids=(groups[i]||[]).filter(id=>pupils.has(id));
+    for(const id of ids){
+      const row=document.createElement('div');row.className='row';row.style.margin='8px 0';
+      const name=document.createElement('span');name.textContent=pupils.get(id).name;
+      const sel=document.createElement('select');sel.style.maxWidth='125px';
+      for(const [value,label] of [['','— Баға —'],['0','0 ұпай'],['1','1 ұпай'],['2','2 ұпай']])sel.add(new Option(label,value));
+      sel.value=Object.hasOwn(draft,id)?String(draft[id]):'';
+      sel.setAttribute('aria-label',pupils.get(id).name+' топтық жұмыс бағасы');
+      sel.onchange=()=>{if(sel.value!=='')setManualGrade(id,sel.value)};
+      row.append(name,sel);box.append(row);
+    }
+    const graded=ids.filter(id=>Object.hasOwn(draft,id));
+    const info=document.createElement('p');info.className='score';
+    info.textContent=`Бағаланғаны: ${graded.length}/${ids.length} · Орташа: ${graded.length?(graded.reduce((n,id)=>n+draft[id],0)/graded.length).toFixed(2):'—'} / 2`;
+    box.append(info);grid.append(box);
+  }
+  area.append(grid);
 }
 
 // Supabase құпиясөзді қалпына келтіру сілтемесін өңдеу.
