@@ -61,6 +61,14 @@ h2{margin:0 0 14px;font-size:20px}h3{margin:0 0 8px;font-size:16px}.muted{color:
 <div id="teacherRanking" class="hidden" aria-live="polite"></div>
 <div class="actions"><button class="secondary" id="raceToggle" onclick="toggleHorseRace()">🐎 Тұлпар бәйгесін көрсету</button></div>
 <div id="teacherHorseRace" class="hidden race-board" aria-live="polite"></div>
+<div class="panel" id="groupingPanel" style="margin-top:16px;background:#101c34">
+<h2>🎲 Автоматты топқа және жұпқа бөлу</h2>
+<p class="muted small">Мұғалімге арналған бөлім. Сабақ кодын енгізіп, «Нәтижелерді жаңарту» батырмасын басыңыз. Бөлініс осы браузерде сақталады; оқушылардың жеке нәтижелері өзгермейді.</p>
+<div class="grid"><div class="span6 field"><label>1-топтың атауы</label><input id="groupName1" value="1-топ" maxlength="60"></div><div class="span6 field"><label>2-топтың атауы</label><input id="groupName2" value="2-топ" maxlength="60"></div></div>
+<div class="actions"><button onclick="makeGroups()">🎲 2 топқа бөлу</button><button class="secondary" onclick="makePairs()">👥 Жұптарға бөлу</button><button class="ghost" onclick="renderGrouping()">🔄 Нәтижені жаңарту</button></div>
+<div id="groupingNotice" class="notice">Алдымен мұғалім ретінде кіріп, оқушылар нәтижесін жүктеңіз.</div>
+<div id="groupingGroups"></div><div id="groupingPairs"></div><div id="groupingWinner"></div>
+</div>
 <div id="secureTeacherResults" class="tablewrap"></div>
 </div>
 </section>
@@ -428,6 +436,7 @@ async function teacherLogout(){
   $('teacherHorseRace').classList.add('hidden');
   $('raceToggle').textContent='🐎 Тұлпар бәйгесін көрсету';
   latestRankingData=null;
+   renderGrouping();
   rankingVisible=false;
   $('teacherRanking').classList.add('hidden');
   $('rankingToggle').textContent='🏆 Рейтингті көрсету';
@@ -449,6 +458,7 @@ async function teacherLoadResults(silent=false){
     const result=await response.json();
     if(!response.ok||!result.success)throw new Error(result.error||'Нәтижелер жүктелмеді');
     latestRankingData=result;
+    renderGrouping();
     if(raceVisible){
       const live=$('raceLiveStatus');
       if(live){live.textContent='● Автоматты жаңарту: 5 секунд · Тексерілді '+new Date().toLocaleTimeString('kk-KZ');live.style.color='#9af3cf';}
@@ -492,6 +502,27 @@ async function teacherLoadResults(silent=false){
       if(live){live.textContent='⚠ Жаңарту қатесі — қайта тексеріледі';live.style.color='#ffcf70';}
       console.warn('Автоматты жаңарту қатесі:',e);
     }}
+}
+
+
+// Топ/жұп құрамдары мұғалімнің осы браузерінде сақталады.
+// Бағалау Supabase-тағы қорғалған getResults жауабынан ғана есептеледі.
+const GROUP_STORAGE='bagalau_grouping_v1';
+function groupingCode(){return ($('teacherLessonCode').value||'').trim().toUpperCase()}
+function groupingRead(){try{return JSON.parse(localStorage.getItem(GROUP_STORAGE)||'{}')}catch{return {}}}
+function groupingGet(){return groupingRead()[groupingCode()]||{}}
+function groupingSave(data){const all=groupingRead();all[groupingCode()]=data;localStorage.setItem(GROUP_STORAGE,JSON.stringify(all))}
+function groupingMessage(message){$('groupingNotice').textContent=message}
+function groupingShuffle(items){const a=[...items];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function groupingNames(){return [$('groupName1').value.trim()||'1-топ',$('groupName2').value.trim()||'2-топ']}
+function groupingReady(){if(!latestRankingData||!latestRankingData.students?.length){groupingMessage('Алдымен мұғалім ретінде кіріп, нәтижелерді жүктеңіз.');return false}return true}
+function makeGroups(){if(!groupingReady())return;const ids=groupingShuffle(latestRankingData.students.map(x=>x.id));const mid=Math.ceil(ids.length/2);const state=groupingGet();state.groups=[ids.slice(0,mid),ids.slice(mid)];state.names=groupingNames();groupingSave(state);renderGrouping()}
+function makePairs(){if(!groupingReady())return;const ids=groupingShuffle(latestRankingData.students.map(x=>x.id));const pairs=[];if(ids.length%2===1&&ids.length>=3){while(ids.length>3)pairs.push(ids.splice(0,2));pairs.push(ids.splice(0,3))}else{while(ids.length)pairs.push(ids.splice(0,2))}const state=groupingGet();state.pairs=pairs;state.names=groupingNames();groupingSave(state);renderGrouping()}
+function groupingScore(p,result){let sum=0;for(const t of result.tasks||[]){const attempt=result.submissions.find(x=>x.student_id===p.id&&x.task_id===t.id);if(attempt)sum+=Number(attempt.score)||0}return sum}
+function renderGrouping(){const groupsArea=$('groupingGroups'),pairsArea=$('groupingPairs'),winnerArea=$('groupingWinner');groupsArea.replaceChildren();pairsArea.replaceChildren();winnerArea.replaceChildren();if(!latestRankingData){groupingMessage('Алдымен мұғалім ретінде кіріп, нәтижелерді жүктеңіз.');return}const result=latestRankingData,st=groupingGet(),students=new Map(result.students.map(p=>[p.id,p]));if(st.names){$('groupName1').value=st.names[0]||'1-топ';$('groupName2').value=st.names[1]||'2-топ'}const names=st.names||groupingNames();groupingMessage('Оқушылар: '+students.size+'. Топтар мен жұптар құрамы осы браузерде сақталады.');
+if(st.groups){const title=document.createElement('h3');title.textContent='🏆 Топтар';groupsArea.append(title);const box=document.createElement('div');box.className='grid';const averages=[];for(let i=0;i<2;i++){const ids=(st.groups[i]||[]).filter(id=>students.has(id));const panel=document.createElement('div');panel.className='span6 task';const heading=document.createElement('h3');heading.textContent=names[i]||`${i+1}-топ`;panel.append(heading);const list=document.createElement('ol');for(const id of ids){const li=document.createElement('li');li.textContent=students.get(id).name;list.append(li)}panel.append(list);const avg=ids.length?ids.reduce((a,id)=>a+groupingScore(students.get(id),result),0)/ids.length:0;averages.push(avg);const label=document.createElement('p');label.className='score';label.textContent='Орташа ұпай: '+avg.toFixed(2)+' / '+result.tasks.reduce((a,t)=>a+Number(t.points||0),0);panel.append(label);box.append(panel)}groupsArea.append(box);const winner=document.createElement('div');winner.className='notice good';winner.textContent=averages[0]===averages[1]?'🤝 Екі топтың орташа ұпайы тең.':`🏆 Қазір алда: ${names[averages[0]>averages[1]?0:1]}!`;winnerArea.append(winner)}
+if(st.pairs){const title=document.createElement('h3');title.textContent='👥 Жұптар және үштік';pairsArea.append(title);const list=document.createElement('div');list.className='grid';st.pairs.forEach((ids,i)=>{const box=document.createElement('div');box.className='span6 task';const label=document.createElement('b');label.textContent=ids.length===3?'Үштік':`${i+1}-жұп`;box.append(label);const text=document.createElement('p');text.textContent=ids.map(id=>students.get(id)?.name||'Тізімнен шығарылған оқушы').join(' • ');box.append(text);list.append(box)});pairsArea.append(list)}
+if(!st.groups&&!st.pairs)groupingMessage('«2 топқа бөлу» немесе «Жұптарға бөлу» батырмасын басыңыз.');
 }
 
 // Supabase құпиясөзді қалпына келтіру сілтемесін өңдеу.
