@@ -11,6 +11,15 @@ button,input,textarea,select{font:inherit}button{cursor:pointer;border:0;border-
 .panel{background:linear-gradient(145deg,rgba(23,33,57,.97),rgba(17,25,44,.97));border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:16px;box-shadow:0 14px 40px #0002}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}.span12{grid-column:span 12}.span8{grid-column:span 8}.span6{grid-column:span 6}.span4{grid-column:span 4}.span3{grid-column:span 3}
 h2{margin:0 0 14px;font-size:20px}h3{margin:0 0 8px;font-size:16px}.muted{color:var(--muted)}.small{font-size:12px}.field{display:flex;flex-direction:column;gap:6px;margin:10px 0}.field label{color:#c6d3ee;font-size:13px;font-weight:700}input,textarea,select{width:100%;border:1px solid #344361;background:#0d1528;color:var(--text);border-radius:11px;padding:11px 12px;outline:none}input:focus,textarea:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px #54e3ff18}textarea{min-height:86px;resize:vertical}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.row .fit{flex:0 0 auto}.stat{background:#10192c;border:1px solid var(--line);padding:15px;border-radius:15px}.stat b{font-size:25px;display:block}.stat span{font-size:12px;color:var(--muted)}.badge{display:inline-block;border:1px solid #415375;border-radius:999px;padding:3px 9px;color:#c6d3ee;font-size:11px}.badge.ok{border-color:#277d66;color:var(--green)}.badge.wait{border-color:#8b6830;color:var(--amber)}.task{padding:15px;border:1px solid var(--line);border-radius:15px;margin:10px 0;background:#111a2e}.taskhead{display:flex;justify-content:space-between;gap:10px;align-items:start}.task p{white-space:pre-wrap}.options{display:grid;gap:8px;margin:12px 0}.option{display:flex;gap:10px;align-items:flex-start;background:#0c1426;border:1px solid #344361;border-radius:10px;padding:10px}.option input{width:auto;margin-top:5px}.bar{height:8px;background:#28334d;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--purple));border-radius:99px}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:680px}th,td{text-align:left;padding:11px;border-bottom:1px solid var(--line)}th{color:#b8c8e7;font-size:12px}td{font-size:13px}.score{font-weight:800;color:var(--green)}.empty{text-align:center;padding:28px;color:var(--muted)}.hidden{display:none!important}.notice{padding:12px 14px;border:1px solid #40537a;background:#101c34;border-radius:12px;color:#c9d8f5;margin:10px 0}.notice.warn{border-color:#806632;color:#ffe0a1}.notice.good{border-color:#28795f;color:#9af3cf}.notice.error{border-color:#884458;color:#ffb5c2}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.task-code{font-family:ui-monospace,monospace;color:#9cecff;background:#0a1222;padding:12px;border-radius:10px;white-space:pre-wrap}.footer{text-align:center;color:#7282a1;font-size:12px;padding:20px}
 @media(max-width:800px){.span8,.span6,.span4,.span3{grid-column:span 12}.wrap{padding:12px}.panel{padding:15px}.brand h1{font-size:19px}}
+
+/* Тұлпар бәйгесі: тек мұғалімнің қорғалған нәтижелерінен есептеледі */
+.race-board{margin:16px 0;padding:16px;border:1px solid #435b82;border-radius:18px;background:linear-gradient(135deg,#172947,#101a30)}
+.race-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.race-track{display:grid;gap:8px}.race-lane{display:grid;grid-template-columns:minmax(105px,180px) minmax(160px,1fr) 65px;align-items:center;gap:12px;padding:7px 4px;border-bottom:1px solid #334564}
+.race-name{font-weight:650;font-size:12px;overflow-wrap:anywhere}.race-course{position:relative;height:36px;border-radius:8px;background:repeating-linear-gradient(90deg,#1b3550 0,#1b3550 25px,#203c59 25px,#203c59 50px);border:1px solid #385571;overflow:hidden}
+.race-course:after{content:'🏁';position:absolute;right:1px;top:2px;font-size:24px;z-index:2}.race-horse{position:absolute;top:2px;left:0;transform:translateX(-1%);font-size:24px;line-height:30px;transition:left 1.1s cubic-bezier(.22,.8,.2,1);z-index:1;filter:drop-shadow(0 1px 2px #0008)}
+.race-score{text-align:right;color:#9ff1d1;font-weight:750;font-variant-numeric:tabular-nums}.race-note{font-size:12px;color:#b8c8e7;margin-top:12px}
+@media(max-width:650px){.race-lane{grid-template-columns:90px minmax(100px,1fr) 48px;gap:5px}.race-board{padding:10px}.race-name{font-size:11px}.race-score{font-size:12px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -50,6 +59,8 @@ h2{margin:0 0 14px;font-size:20px}h3{margin:0 0 8px;font-size:16px}.muted{color:
 <div id="teacherAuthStatus" class="notice">Мұғалім аккаунтыңызбен кіріңіз.</div>
 <div class="actions" style="margin-top:12px"><button class="secondary" id="rankingToggle" onclick="toggleRanking()">🏆 Рейтингті көрсету</button></div>
 <div id="teacherRanking" class="hidden" aria-live="polite"></div>
+<div class="actions"><button class="secondary" id="raceToggle" onclick="toggleHorseRace()">🐎 Тұлпар бәйгесін көрсету</button></div>
+<div id="teacherHorseRace" class="hidden race-board" aria-live="polite"></div>
 <div id="secureTeacherResults" class="tablewrap"></div>
 </div>
 </section>
@@ -319,10 +330,57 @@ function renderTeacherRanking(result){
   note.textContent='Рейтинг нақты тапсырма нәтижелерінен есептеледі. Жаңарту үшін «Нәтижелерді жаңарту» батырмасын басыңыз.';
   area.append(note);
 }
+let raceVisible=false;
+function toggleHorseRace(){
+  raceVisible=!raceVisible;
+  $('teacherHorseRace').classList.toggle('hidden',!raceVisible);
+  $('raceToggle').textContent=raceVisible?'🐎 Тұлпар бәйгесін жасыру':'🐎 Тұлпар бәйгесін көрсету';
+  if(raceVisible){
+    if(latestRankingData)renderHorseRace(latestRankingData);
+    else $('teacherHorseRace').textContent='Алдымен мұғалім ретінде кіріп, нәтижелерді жаңартыңыз.';
+  }
+}
+function renderHorseRace(result){
+  const area=$('teacherHorseRace');area.replaceChildren();
+  const head=document.createElement('div');head.className='race-head';
+  const title=document.createElement('h3');title.textContent='🐎 Логикалық амалдар — Тұлпар бәйгесі';
+  const max=result.tasks.reduce((n,t)=>n+Number(t.points||0),0);
+  const cap=document.createElement('span');cap.className='badge';cap.textContent='Мәре: '+max+' ұпай';
+  head.append(title,cap);area.append(head);
+  const scores=result.students.map(p=>{
+    let total=0,completed=0;
+    for(const t of result.tasks){
+      const attempts=result.submissions.filter(x=>x.student_id===p.id&&x.task_id===t.id);
+      if(attempts.length){completed++;total+=Number(attempts[0].score||0);}
+    }
+    return {name:p.name,total,completed};
+  }).sort((a,b)=>b.total-a.total||b.completed-a.completed||a.name.localeCompare(b.name,'kk'));
+  const track=document.createElement('div');track.className='race-track';
+  for(const p of scores){
+    const lane=document.createElement('div');lane.className='race-lane';
+    const name=document.createElement('div');name.className='race-name';name.textContent=p.name;
+    const course=document.createElement('div');course.className='race-course';
+    const horse=document.createElement('span');horse.className='race-horse';horse.textContent='🐎';
+    horse.setAttribute('aria-label','Тұлпар');
+    course.append(horse);
+    const score=document.createElement('div');score.className='race-score';score.textContent=p.total+'/'+max;
+    lane.append(name,course,score);track.append(lane);
+    const pct=max>0?Math.min(100,Math.max(0,p.total/max*100)):0;
+    requestAnimationFrame(()=>{horse.style.left=`calc(${pct}% - ${pct/100*35}px)`;});
+  }
+  area.append(track);
+  const note=document.createElement('p');note.className='race-note';
+  note.textContent='Тұлпарлар нақты ұпайға қарай қозғалады. Жаңа жауаптарды көру үшін «Нәтижелерді жаңарту» батырмасын басыңыз.';
+  area.append(note);
+}
 async function teacherLogout(){
   try{const client=await teacherGetClient();await client.auth.signOut()}catch{}
   $('secureTeacherResults').replaceChildren();
   $('teacherRanking').replaceChildren();
+  $('teacherHorseRace').replaceChildren();
+  raceVisible=false;
+  $('teacherHorseRace').classList.add('hidden');
+  $('raceToggle').textContent='🐎 Тұлпар бәйгесін көрсету';
   latestRankingData=null;
   rankingVisible=false;
   $('teacherRanking').classList.add('hidden');
@@ -346,6 +404,7 @@ async function teacherLoadResults(){
     if(!response.ok||!result.success)throw new Error(result.error||'Нәтижелер жүктелмеді');
     latestRankingData=result;
     if(rankingVisible)renderTeacherRanking(result);
+    if(raceVisible)renderHorseRace(result);
     const area=$('secureTeacherResults');
     area.replaceChildren();
     const heading=document.createElement('h3');
