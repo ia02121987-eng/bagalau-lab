@@ -27,7 +27,9 @@ h2{margin:0 0 14px;font-size:20px}h3{margin:0 0 8px;font-size:16px}.muted{color:
 <div class="grid"><div class="span4 field"><label>Тапсырма атауы</label><input id="taskTitle" placeholder="1-тапсырма: CSS"></div><div class="span4 field"><label>Тапсырма түрі</label><select id="taskType" onchange="taskTypeChanged()"><option value="quiz">Тест (автоматты)</option><option value="short">Қысқа жауап (автоматты)</option><option value="match">Сәйкестендіру/реттеу (жеңілдетілген)</option><option value="code">Код жазу (мұғалім тексереді)</option><option value="practical">Практикалық жұмыс (мұғалім тексереді)</option></select></div><div class="span4 field"><label>Ең жоғары ұпай</label><input id="taskPoints" type="number" min="1" max="100" value="2"></div><div class="span12 field"><label>Нұсқау / сұрақ</label><textarea id="taskPrompt" placeholder="Оқушыға берілетін тапсырма мәтіні"></textarea></div><div class="span12" id="taskExtra"></div></div><div class="actions"><button onclick="addTask()">＋ Тапсырманы қосу</button><button class="ghost" onclick="clearTasks()">Тапсырмаларды тазарту</button></div><div id="taskList"></div></div>
 <div class="panel span12"><h2>👥 Оқушылар және ағымдағы ұпай</h2><div id="liveRoster" class="empty">Алдымен сабақ сессиясын бастаңыз.</div></div>
 </div></section>
-<section id="studentView" class="hidden"><div class="grid"><div class="panel span4"><h2>🎒 Сабаққа қосылу</h2><div class="field"><label>Сессия коды</label><input id="joinCode" placeholder="Мысалы: A7K2Q" maxlength="8" style="text-transform:uppercase"></div><div class="field"><label>Оқушының аты-жөні</label><input id="studentName" placeholder="Аты-жөніңіз"></div><button onclick="joinSession()">Сабаққа кіру</button><div id="studentJoinStatus" class="notice hidden"></div><p class="muted small">Мұғалім берген сессия кодын енгізіңіз.</p></div><div class="panel span8"><div class="row"><div><h2 id="studentLessonTitle">📚 Тапсырмалар</h2><p id="studentIdentity" class="muted">Сабаққа кіргеннен кейін тапсырмалар көрінеді.</p></div><div class="fit stat"><b id="studentTotal">0</b><span>Жиналған ұпай</span></div></div><div id="studentTasks" class="empty">Алдымен сабаққа қосылыңыз.</div></div></div></section>
+<section id="studentView" class="hidden"><div class="grid"><div class="panel span4"><h2>🎒 Сабаққа қосылу</h2><div class="field"><label>Сессия коды</label><input id="joinCode" placeholder="Мысалы: LG9A5" maxlength="5" style="text-transform:uppercase" oninput="scheduleRosterLookup()"></div><div class="field"><label>Оқушының аты-жөні</label><select id="studentName">
+  <option value="">Алдымен сабақ кодын енгізіңіз</option>
+</select></div><button onclick="joinSession()">Сабаққа кіру</button><div id="studentJoinStatus" class="notice hidden"></div><p class="muted small">Мұғалім берген сессия кодын енгізіңіз.</p></div><div class="panel span8"><div class="row"><div><h2 id="studentLessonTitle">📚 Тапсырмалар</h2><p id="studentIdentity" class="muted">Сабаққа кіргеннен кейін тапсырмалар көрінеді.</p></div><div class="fit stat"><b id="studentTotal">0</b><span>Жиналған ұпай</span></div></div><div id="studentTasks" class="empty">Алдымен сабаққа қосылыңыз.</div></div></div></section>
 <section id="resultsView" class="hidden"><div class="panel"><div class="row"><div><h2>📊 Нәтижелер журналы</h2><p class="muted small">Әр оқушының әр тапсырмадан жинаған ұпайы.</p></div><div class="fit actions"><button class="secondary" onclick="exportCSV()">Excel/CSV жүктеу</button><button class="ghost" onclick="refreshAll()">Жаңарту</button></div></div><div id="resultsTable" class="empty">Нәтиже әзірге жоқ.</div></div></section>
 </div>
 <div id="settingsModal" class="hidden" style="position:fixed;inset:0;background:#030712eF;z-index:20;overflow:auto;padding:18px"><div class="panel" style="max-width:760px;margin:30px auto"><div class="row"><h2>⚙ Ортақ деректер базасын қосу</h2><button class="ghost fit" onclick="closeSettings()">✕</button></div><p class="muted">Әртүрлі құрылғыдан деректер алмасу үшін Supabase жобасының URL және anon/public key мәндерін енгізіңіз. Құпия service_role кілтін ешқашан браузерге енгізбеңіз.</p><div class="field"><label>Supabase Project URL</label><input id="sbUrl" placeholder="https://xxxx.supabase.co"></div><div class="field"><label>Supabase anon / publishable key</label><textarea id="sbKey" style="min-height:65px" placeholder="eyJ... немесе sb_publishable_..."></textarea></div><div class="actions"><button onclick="connectCloud()">Қосылу</button><button class="secondary" onclick="saveCloudSettings()">Баптауды сақтау</button><button class="ghost" onclick="disconnectCloud()">Демо режиміне қайту</button></div><div id="settingsStatus" class="notice">Алдымен төмендегі SQL файлын Supabase SQL Editor ішінде іске қосыңыз.</div><h3 style="margin-top:20px">Қосу реті</h3><ol class="muted"><li>supabase.com сайтында жоба ашыңыз.</li><li>Жобаңыздың SQL Editor бөліміне берілген <b>database_setup.sql</b> кодын орындаңыз.</li><li>Project URL мен anon/publishable key енгізіп, «Қосылу» батырмасын басыңыз.</li><li>Сессияны қайта ашыңыз. Мұғалім мен оқушы әртүрлі құрылғыдан сол кодпен қосыла алады.</li></ol></div></div>
@@ -65,7 +67,68 @@ function totalFor(sid){return submissions.filter(s=>s.studentId===sid).reduce((a
 function maxTotal(){return tasks.reduce((a,t)=>a+t.points,0)}
 function renderRoster(){const el=$('liveRoster');if(!roster.length){el.innerHTML='Алдымен сабақ сессиясын бастаңыз.';return}el.innerHTML='<div class="tablewrap"><table><thead><tr><th>Оқушы</th><th>Жауап саны</th><th>Ұпай</th><th>Прогресс</th></tr></thead><tbody>'+roster.map(s=>{let done=submissions.filter(x=>x.studentId===s.id).length,sc=totalFor(s.id),max=maxTotal();return `<tr><td>${escapeHtml(s.name)}</td><td>${done}/${tasks.length}</td><td class="score">${sc}/${max}</td><td><div class="bar"><i style="width:${max?sc/max*100:0}%"></i></div></td></tr>`}).join('')+'</tbody></table></div>'}
 function renderStudentTasks(){if(!student||!session){$('studentTasks').innerHTML='Алдымен сабаққа қосылыңыз.';return}$('studentLessonTitle').textContent='📚 '+session.title;$('studentIdentity').textContent=student.name+' · '+session.className;const done=submissions.filter(s=>s.studentId===student.id);$('studentTotal').textContent=totalFor(student.id);if(!tasks.length){$('studentTasks').innerHTML='<div class="empty">Мұғалім тапсырма қосқан жоқ.</div>';return}$('studentTasks').innerHTML=tasks.map((t,i)=>{const sub=done.find(s=>s.taskId===t.id);let input='';if(t.type==='quiz')input='<div class="options">'+t.options.map((o,j)=>`<label class="option"><input type="radio" name="ans_${t.id}" value="${j}" ${sub?'disabled':''}><span>${escapeHtml(o)}</span></label>`).join('')+'</div>';else if(t.type==='match')input='<div class="field"><label>Жауаптарды ретімен жазыңыз</label><textarea id="ans_'+t.id+'" '+(sub?'disabled':'')+' placeholder="Әр жолға бір жауап"></textarea><div class="muted small">Жұптар саны: '+t.pairs.length+'</div></div>';else input=`<div class="field"><label>${t.type==='code'?'Код жауабы':'Жауабы / жұмыстың сипаттамасы'}</label><textarea id="ans_${t.id}" ${sub?'disabled':''} placeholder="Жауабыңызды жазыңыз..."></textarea></div>`;return `<div class="task"><div class="taskhead"><div><span class="badge">${i+1}. ${typeLabel(t.type)}</span><h3 style="margin-top:8px">${escapeHtml(t.title)}</h3></div><b>${t.points} ұпай</b></div><p>${escapeHtml(t.prompt)}</p>${input}${sub?`<div class="notice ${sub.pending?'warn':'good'}">${sub.pending?'Мұғалім тексеруін күтуде':'Баға: '+sub.score+'/'+t.points+' ұпай'}${sub.feedback?' · '+escapeHtml(sub.feedback):''}</div>`:`<button onclick="submitAnswer('${t.id}')">Жауапты жіберу</button>`}</div>`}).join('')}
-async function joinSession(){const code=$('joinCode').value.trim().toUpperCase(),name=$('studentName').value.trim();if(!code||!name){$('studentJoinStatus').textContent='Код пен аты-жөніңізді енгізіңіз.';$('studentJoinStatus').classList.remove('hidden');return}let found=null;if(cloud){try{let r=await db.from('sessions').select('*').eq('code',code).eq('active',true).maybeSingle();if(r.error)throw r.error;if(r.data)found={id:r.data.id,code:r.data.code,title:r.data.title,className:r.data.class_name,teacher:r.data.teacher_name,active:r.data.active}}catch(e){note('Сессияны іздеу қатесі: '+e.message,'error')}}if(!found&&session&&session.code===code&&session.active)found=session;if(!found){$('studentJoinStatus').textContent='Белсенді сессия табылмады. Кодты тексеріңіз немесе мұғалімнен сұраңыз.';$('studentJoinStatus').classList.remove('hidden');return}session=found;let existing=roster.find(s=>s.name.toLowerCase()===name.toLowerCase());student=existing||{id:'guest_'+uid(),name};if(!existing)roster.push(student);if(cloud){try{const {data,error}=await db.from('students').upsert({id:student.id,session_id:session.id,name:student.name},{onConflict:'id'}).select().single();if(error)throw error;student.id=data.id;await loadCloudSession()}catch(e){note('Оқушы профилін сақтау қатесі: '+e.message,'error')}}$('studentJoinStatus').textContent='Сабаққа сәтті қосылдыңыз!';$('studentJoinStatus').classList.remove('hidden');$('studentJoinStatus').classList.add('good');renderStudentTasks();renderRoster();updateStats();if(cloud)subscribeRealtime();showView('student')}
+// Оқушылар тізімін тек student-api серверінен аламыз.
+const STUDENT_API = 'https://lyviotqjrautwyfonhju.supabase.co/functions/v1/student-api';
+let selectedLesson=null, lookupTimer=null, lookupSerial=0;
+function joinStatus(message, kind=''){
+  const el=$('studentJoinStatus'); el.textContent=message;
+  el.className='notice '+kind;
+}
+function scheduleRosterLookup(){
+  clearTimeout(lookupTimer);
+  const code=$('joinCode').value.trim().toUpperCase();
+  $('studentName').replaceChildren(new Option('Алдымен сабақ кодын енгізіңіз',''));
+  selectedLesson=null;
+  if(code.length!==5){joinStatus('5 таңбалы сабақ кодын енгізіңіз.');return;}
+  lookupTimer=setTimeout(()=>lookupRoster(code),400);
+}
+async function lookupRoster(code){
+  const serial=++lookupSerial;
+  const select=$('studentName');
+  select.replaceChildren(new Option('Оқушылар тізімі жүктелуде...',''));
+  joinStatus('Сабақ ізделуде...');
+  try{
+    const response=await fetch(STUDENT_API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'lookup',code})
+    });
+    const result=await response.json();
+    if(serial!==lookupSerial || $('joinCode').value.trim().toUpperCase()!==code)return;
+    if(!response.ok||!result.success)throw new Error(result.error||'Сервер қатесі');
+    selectedLesson=result;
+    select.replaceChildren(new Option('Өз аты-жөніңізді таңдаңыз',''));
+    for(const pupil of result.students||[]){
+      select.add(new Option(pupil.name,pupil.id));
+    }
+    joinStatus(result.session.title+' — '+(result.students||[]).length+' оқушы табылды.','good');
+  }catch(e){
+    if(serial!==lookupSerial)return;
+    selectedLesson=null;
+    select.replaceChildren(new Option('Тізім жүктелмеді',''));
+    joinStatus('Қате: '+(e.message||e),'error');
+  }
+}
+async function joinSession(){
+  const code=$('joinCode').value.trim().toUpperCase();
+  const id=$('studentName').value;
+  if(!selectedLesson||!id||code.length!==5){
+    joinStatus('Алдымен сабақ кодын енгізіп, тізімнен атыңызды таңдаңыз.','warn');return;
+  }
+  const pupil=selectedLesson.students.find(x=>x.id===id);
+  if(!pupil){joinStatus('Оқушы табылмады.','error');return;}
+  session={...selectedLesson.session,code,active:true};
+  student={id:pupil.id,name:pupil.name};
+  // Тек оқушыға рұқсат етілген деректерді көрсету; жауап пен бағаны
+  // серверлік тексеру қосылғанша браузерден жібермеу.
+  roster=[];tasks=[];submissions=[];
+  $('studentLessonTitle').textContent='📚 '+session.title;
+  $('studentIdentity').textContent=student.name+' · '+session.className;
+  $('studentTotal').textContent='—';
+  $('studentTasks').innerHTML='<div class="notice warn">Сабаққа қосылдыңыз. Тапсырмалар мен автоматты бағалау серверде әлі қосылмаған. Мұғалімнің хабарлауын күтіңіз.</div>';
+  joinStatus('Сабақ пен оқушы таңдалды: '+student.name,'good');
+}
+
 async function submitAnswer(taskId){const t=tasks.find(x=>x.id===taskId);if(!student||!t)return;let answer='';if(t.type==='quiz'){const checked=document.querySelector(`input[name="ans_${taskId}"]:checked`);if(!checked){note('Жауап нұсқасын таңдаңыз.','warn');return}answer=checked.value}else answer=$('ans_'+taskId)?.value.trim()||'';if(!answer){note('Жауапты енгізіңіз.','warn');return}let score=0,pending=false,feedback='';if(t.type==='quiz'){score=Number(answer)===t.correct?t.points:0;feedback=score?'Дұрыс жауап!':'Қате жауап.'}else if(t.type==='short'){score=t.correct.some(x=>x===answer.toLowerCase())?t.points:0;feedback=score?'Дұрыс жауап!':'Жауап қабылданды.'}else if(t.type==='match'){const lines=answer.split('\n').map(x=>x.trim().toLowerCase()).filter(Boolean);const expected=t.pairs.map(x=>x[1].toLowerCase());const n=expected.filter((x,i)=>lines[i]===x).length;score=Math.round(t.points*n/expected.length);feedback='Автоматты салыстырылды.'}else{pending=true;feedback='Мұғалім тексеруін күтуде.'}
 let sub={id:uid(),sessionId:session.id,studentId:student.id,studentName:student.name,taskId:t.id,answer,score,pending,feedback,created:new Date().toISOString()};if(cloud){try{const {data:st}=await db.from('students').select('id').eq('session_id',session.id).eq('name',student.name).maybeSingle();if(st)sub.studentId=st.id;const {error}=await db.from('submissions').insert({session_id:session.id,student_id:sub.studentId,task_id:t.id,answer,score,pending,feedback});if(error)throw error}catch(e){note('Жауапты базаға жіберу қатесі: '+e.message,'error');return}}submissions=submissions.filter(s=>!(s.studentId===sub.studentId&&s.taskId===t.id));submissions.push(sub);saveLocal();renderStudentTasks();renderRoster();renderResults();updateStats();if(cloud)syncCloudState();note(pending?'Жауап жіберілді. Мұғалім бағалайды.':'Жауап тексерілді. Ұпайыңыз жаңартылды.',pending?'':'good')}
 function renderResults(){const el=$('resultsTable');if(!roster.length||!tasks.length){el.innerHTML='<div class="empty">Сессия, оқушылар және тапсырмалар болғанда журнал толады.</div>';return}let h='<div class="tablewrap"><table><thead><tr><th>Оқушы</th>'+tasks.map(t=>`<th>${escapeHtml(t.title)}<br><span class="muted">/${t.points}</span></th>`).join('')+'<th>Барлығы</th></tr></thead><tbody>';for(const s of roster){let sum=0;h+=`<tr><td><b>${escapeHtml(s.name)}</b></td>`;for(const t of tasks){const sub=submissions.find(x=>x.studentId===s.id&&x.taskId===t.id);sum+=sub?Number(sub.score)||0:0;h+=`<td>${sub?`<span class="${sub.pending?'badge wait':'score'}">${sub.pending?'Тексеру':sub.score+'/'+t.points}</span>${sub.pending?`<div class="actions"><input id="grade_${sub.id}" type="number" min="0" max="${t.points}" value="${sub.score}" style="width:70px;padding:5px"><button class="secondary" onclick="gradeSubmission('${sub.id}','${t.id}')">Бағалау</button></div>`:''}`:'—'}</td>`}h+=`<td class="score">${sum}/${maxTotal()}</td></tr>`}el.innerHTML=h+'</tbody></table></div>'}
@@ -77,6 +140,6 @@ async function loadCloudSession(){if(!cloud||!session)return;const [tr,sr,ur]=aw
 function subscribeRealtime(){if(!cloud||!session)return;if(realtime){db.removeChannel(realtime);realtime=null}realtime=db.channel('bagalau-'+session.id).on('postgres_changes',{event:'*',schema:'public',table:'submissions',filter:'session_id=eq.'+session.id},()=>refreshCloudSubmissions().catch(()=>{})).on('postgres_changes',{event:'*',schema:'public',table:'tasks',filter:'session_id=eq.'+session.id},()=>loadCloudSession().catch(()=>{})).subscribe()}
 async function refreshAll(){if(cloud&&session){await loadCloudSession();note('Деректер жаңартылды.','good')}else{loadLocal();renderStudentTasks();renderRoster();renderTasks();renderResults();updateStats()}}
 taskTypeChanged();
-const params=new URLSearchParams(location.search);if(params.get('join')){$('joinCode').value=params.get('join');showView('student')}
+const params=new URLSearchParams(location.search);if(params.get('join')){$('joinCode').value=params.get('join');showView('student');scheduleRosterLookup()}
 boot();
 </script></body></html>
