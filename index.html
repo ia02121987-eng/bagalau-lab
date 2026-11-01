@@ -47,7 +47,7 @@ h2{margin:0 0 14px;font-size:20px}h3{margin:0 0 8px;font-size:16px}.muted{color:
 </div></details></section>
 <section id="studentView" class="hidden"><div class="grid"><div class="panel span4"><h2>🎒 Сабаққа қосылу</h2><div class="field"><label>Сессия коды</label><input id="joinCode" placeholder="Мысалы: LG9A5" maxlength="5" style="text-transform:uppercase" oninput="scheduleRosterLookup()"></div><div class="field"><label>Оқушының аты-жөні</label><select id="studentName">
   <option value="">Алдымен сабақ кодын енгізіңіз</option>
-</select></div><button onclick="joinSession()">Сабаққа кіру</button><div id="studentJoinStatus" class="notice hidden"></div><p class="muted small">Мұғалім берген сессия кодын енгізіңіз.</p></div><div class="panel span8"><div class="row"><div><h2 id="studentLessonTitle">📚 Тапсырмалар</h2><p id="studentIdentity" class="muted">Сабаққа кіргеннен кейін тапсырмалар көрінеді.</p></div><div class="fit stat"><b id="studentTotal">0</b><span>Жиналған ұпай</span></div></div><div id="studentTasks" class="empty">Алдымен сабаққа қосылыңыз.</div></div></div></section>
+</select></div><div id="studentPinField" class="field hidden"><label for="studentPin">🔐 Оқушының жеке 6 таңбалы PIN-коды</label><input id="studentPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" placeholder="6 таңбалы PIN"></div><button id="studentJoinButton" onclick="joinSession()">Сабаққа кіру</button><button class="ghost" style="margin-left:8px" onclick="studentLogout()">Шығу</button><div id="studentJoinStatus" class="notice hidden"></div><p class="muted small">Мұғалім берген сессия кодын енгізіңіз.</p></div><div class="panel span8"><div class="row"><div><h2 id="studentLessonTitle">📚 Тапсырмалар</h2><p id="studentIdentity" class="muted">Сабаққа кіргеннен кейін тапсырмалар көрінеді.</p></div><div class="fit stat"><b id="studentTotal">0</b><span>Жиналған ұпай</span></div></div><div id="studentTasks" class="empty">Алдымен сабаққа қосылыңыз.</div></div></div></section>
 <section id="resultsView" class="hidden">
 <div class="panel">
 <h2>🔐 Мұғалімнің жеке кіруі</h2>
@@ -72,7 +72,7 @@ h2{margin:0 0 14px;font-size:20px}h3{margin:0 0 8px;font-size:16px}.muted{color:
 <div id="groupingGroups"></div><div id="groupingPairs"></div><div id="groupingWinner"></div>
 <div class="panel" id="manualGroupGradePanel" style="margin-top:16px;background:#17243b">
 <h2>📝 Топтық жұмысты бағалау (0–2 ұпай)</h2>
-<p class="muted small">Әр оқушыға жеке ұпай қойыңыз. Бұл әзірге мұғалім браузеріндегі сынақ нұсқасы: ұпайлар жергілікті сақталады, Supabase серверіне жіберілмейді. Нақты сабақтың ресми 10 ұпайлық нәтижесіне қосу үшін серверлік бағалау әрекеті қажет.</p>
+<p class="muted small">Әр оқушыға жеке ұпай қойыңыз. LOG9B сабағында бағалар Supabase серверіне сақталады. Әр оқушыға жеке 0–2 ұпай қойыңыз.</p>
 <div id="manualGradeNotice" class="notice">Нәтижелерді жүктегеннен кейін оқушылар пайда болады.</div>
 <div id="manualGradeRows"></div>
 </div>
@@ -118,7 +118,7 @@ function renderRoster(){const el=$('liveRoster');if(!roster.length){el.innerHTML
 function renderStudentTasks(){if(!student||!session){$('studentTasks').innerHTML='Алдымен сабаққа қосылыңыз.';return}$('studentLessonTitle').textContent='📚 '+session.title;$('studentIdentity').textContent=student.name+' · '+session.className;const done=submissions.filter(s=>s.studentId===student.id);$('studentTotal').textContent=totalFor(student.id);if(!tasks.length){$('studentTasks').innerHTML='<div class="empty">Мұғалім тапсырма қосқан жоқ.</div>';return}$('studentTasks').innerHTML=tasks.map((t,i)=>{const sub=done.find(s=>s.taskId===t.id);let input='';if(t.type==='quiz')input='<div class="options">'+t.options.map((o,j)=>`<label class="option"><input type="radio" name="ans_${t.id}" value="${j}" ${sub?'disabled':''}><span>${escapeHtml(o)}</span></label>`).join('')+'</div>';else if(t.type==='match')input='<div class="field"><label>Жауаптарды ретімен жазыңыз</label><textarea id="ans_'+t.id+'" '+(sub?'disabled':'')+' placeholder="Әр жолға бір жауап"></textarea><div class="muted small">Жұптар саны: '+t.pairs.length+'</div></div>';else input=`<div class="field"><label>${t.type==='code'?'Код жауабы':'Жауабы / жұмыстың сипаттамасы'}</label><textarea id="ans_${t.id}" ${sub?'disabled':''} placeholder="Жауабыңызды жазыңыз..."></textarea></div>`;return `<div class="task"><div class="taskhead"><div><span class="badge">${i+1}. ${typeLabel(t.type)}</span><h3 style="margin-top:8px">${escapeHtml(t.title)}</h3></div><b>${t.points} ұпай</b></div><p>${escapeHtml(t.prompt)}</p>${input}${sub?`<div class="notice ${sub.pending?'warn':'good'}">${sub.pending?'Мұғалім тексеруін күтуде':'Баға: '+sub.score+'/'+t.points+' ұпай'}${sub.feedback?' · '+escapeHtml(sub.feedback):''}</div>`:`<button onclick="submitAnswer('${t.id}')">Жауапты жіберу</button>`}</div>`}).join('')}
 // Оқушылар тізімін тек student-api серверінен аламыз.
 const STUDENT_API = 'https://lyviotqjrautwyfonhju.supabase.co/functions/v1/student-api';
-let selectedLesson=null, lookupTimer=null, lookupSerial=0;
+let selectedLesson=null, lookupTimer=null, lookupSerial=0, studentToken=null;
 function joinStatus(message, kind=''){
   const el=$('studentJoinStatus'); el.textContent=message;
   el.className='notice '+kind;
@@ -127,7 +127,7 @@ function scheduleRosterLookup(){
   clearTimeout(lookupTimer);
   const code=$('joinCode').value.trim().toUpperCase();
   $('studentName').replaceChildren(new Option('Алдымен сабақ кодын енгізіңіз',''));
-  selectedLesson=null;
+  selectedLesson=null; studentToken=null; $('studentPin').value=''; $('studentPinField').classList.add('hidden');
   if(code.length!==5){joinStatus('5 таңбалы сабақ кодын енгізіңіз.');return;}
   lookupTimer=setTimeout(()=>lookupRoster(code),400);
 }
@@ -149,6 +149,7 @@ async function lookupRoster(code){
     if(serial!==lookupSerial || $('joinCode').value.trim().toUpperCase()!==code)return;
     if(!response.ok||!result.success)throw new Error(result.message||result.error||'Сервер қатесі');
     selectedLesson=result;
+    $('studentPinField').classList.toggle('hidden',!result.requiresPin);
     select.replaceChildren(new Option('Өз аты-жөніңізді таңдаңыз',''));
     for(const pupil of result.students||[]){
       select.add(new Option(pupil.name,pupil.id));
@@ -161,97 +162,105 @@ async function lookupRoster(code){
     joinStatus('Қате: '+(e.message||e),'error');
   }
 }
+function studentLogout(){
+  studentToken=null; student=null; selectedLesson=null; session=null;
+  $('studentPin').value=''; $('studentPinField').classList.add('hidden');
+  $('studentTasks').textContent='Алдымен сабаққа қосылыңыз.';
+  $('studentIdentity').textContent='Сабаққа кіргеннен кейін тапсырмалар көрінеді.';
+  $('studentTotal').textContent='—'; $('joinCode').value='';
+  $('studentName').replaceChildren(new Option('Алдымен сабақ кодын енгізіңіз',''));
+  joinStatus('Оқушы жүйеден шықты.');
+}
+async function studentApiCall(payload){
+  const response=await fetch(STUDENT_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const data=await response.json();
+  if(!response.ok||!data.success)throw new Error(data.error||'Сервер қатесі');
+  return data;
+}
 async function joinSession(){
-  const code=$('joinCode').value.trim().toUpperCase();
-  const id=$('studentName').value;
-  if(!selectedLesson||!id||code.length!==5){
-    joinStatus('Алдымен сабақ кодын енгізіп, тізімнен атыңызды таңдаңыз.','warn');return;
-  }
+  const code=$('joinCode').value.trim().toUpperCase(), id=$('studentName').value;
+  if(!selectedLesson||!id||code.length!==5){joinStatus('Алдымен сабақ кодын енгізіп, атыңызды таңдаңыз.','warn');return;}
   const pupil=selectedLesson.students.find(x=>x.id===id);
   if(!pupil){joinStatus('Оқушы табылмады.','error');return;}
-  session={...selectedLesson.session,code,active:true};
-  student={id:pupil.id,name:pupil.name};
-  // Тек оқушыға рұқсат етілген деректерді көрсету; жауап пен бағаны
-  // серверлік тексеру қосылғанша браузерден жібермеу.
-  roster=[];tasks=[];submissions=[];
-  $('studentLessonTitle').textContent='📚 '+session.title;
-  $('studentIdentity').textContent=student.name+' · '+session.className;
-  $('studentTotal').textContent='—';
-  $('studentTasks').innerHTML='<div class="notice">Тапсырмалар жүктелуде...</div>';
-  try {
-    const response=await fetch(STUDENT_API,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'getTasks',code,studentId:student.id})
-    });
-    const data=await response.json();
-    if(!response.ok || !data.success) throw new Error(data.error||'Тапсырмаларды алу мүмкін болмады');
-    const area=$('studentTasks');
-    area.replaceChildren();
-    if(!data.tasks?.length){
-      area.textContent='Бұл сабаққа әзірге тапсырмалар енгізілмеген.';
-    }else{
-      for(const [i,t] of data.tasks.entries()){
-        const block=document.createElement('div');
-        block.className='task';
-        const heading=document.createElement('h3');
-        heading.textContent=`${i+1}. ${t.title} (${t.points} ұпай)`;
-        const question=document.createElement('p');
-        question.textContent=t.question||'';
-        block.append(heading,question);
-        for(const [j,option] of (Array.isArray(t.options)?t.options:[]).entries()){
-          const line=document.createElement('label');
-          line.className='option';
-          const radio=document.createElement('input');
-          radio.type='radio';
-          radio.name='preview_'+t.id;
-          radio.value=String(j);
-          radio.disabled=false;
-          const text=document.createElement('span');
-          text.textContent=String(option);
-          line.append(radio,text);
-          block.append(line);
-        }
-        const send=document.createElement('button');
-        send.textContent='Жауапты жіберу';
-        const result=document.createElement('div');
-        result.className='notice hidden';
-        send.onclick=async()=>{
-          const checked=block.querySelector('input[type="radio"]:checked');
-          if(!checked){result.textContent='Алдымен жауапты таңдаңыз.';result.className='notice warn';return;}
-          send.disabled=true;
-          send.textContent='Жіберілуде...';
-          try{
-            const response=await fetch(STUDENT_API,{
-              method:'POST',
-              headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({action:'submitAnswer',code,studentId:student.id,taskId:t.id,answerIndex:Number(checked.value)})
-            });
-            const data=await response.json();
-            if(!response.ok||!data.success)throw new Error(data.error||'Жауап сақталмады');
-            result.textContent=`${data.feedback} Ұпай: ${data.score}/${data.maxPoints}`;
-            result.className='notice good';
-            send.textContent='Жауап қабылданды';
-            block.querySelectorAll('input[type="radio"]').forEach(x=>x.disabled=true);
-          }catch(e){
-            result.textContent='Қате: '+(e.message||e);
-            result.className='notice error';
-            send.textContent='Қайта жіберу';
-            send.disabled=false;
-          }
-        };
-        block.append(send,result);
-        area.append(block);
-      }
-      const notice=document.createElement('div');
-      notice.className='notice warn';
-      notice.textContent='Әр тапсырмаға бір рет жауап беріңіз. Ұпайды сервер есептейді.';
-      area.append(notice);
+  const button=$('studentJoinButton');button.disabled=true;
+  try{
+    studentToken=null;
+    if(selectedLesson.requiresPin){
+      const pin=$('studentPin').value.trim();
+      if(!/^\d{6}$/.test(pin))throw new Error('6 таңбалы PIN-кодты енгізіңіз.');
+      const login=await studentApiCall({action:'login',code,studentId:id,pin});
+      studentToken=login.studentToken;
+      $('studentPin').value='';
     }
-  }catch(e){
-    $('studentTasks').textContent='Тапсырмаларды жүктеу қатесі: '+(e.message||e);
-  }
-  joinStatus('Сабақ пен оқушы таңдалды: '+student.name,'good');
+    const data=await studentApiCall({action:'getTasks',code,studentId:id,...(studentToken?{studentToken}:{})});
+    session={...selectedLesson.session,code,active:true}; student={id:pupil.id,name:pupil.name};
+    $('studentLessonTitle').textContent='📚 '+session.title;
+    $('studentIdentity').textContent=student.name+' · '+session.className;
+    renderApiTasks(data.tasks||[]);
+    joinStatus('Сабаққа кірдіңіз: '+student.name,'good');
+  }catch(e){studentToken=null;$('studentTasks').textContent='Тапсырмаларды жүктеу мүмкін болмады: '+(e.message||e);joinStatus('Қате: '+(e.message||e),'error');}
+  finally{button.disabled=false;}
+}
+function renderApiTasks(apiTasks){
+  const area=$('studentTasks');area.replaceChildren();
+  $('studentTotal').textContent=apiTasks.reduce((n,t)=>n+(Number(t.score)||0),0);
+  if(!apiTasks.length){area.textContent='Бұл сабаққа әзірге тапсырмалар енгізілмеген.';return;}
+  apiTasks.forEach((t,i)=>{
+    const block=document.createElement('div');block.className='task';
+    const heading=document.createElement('h3');heading.textContent=`${i+1}. ${t.title} (${t.points} ұпай)`;block.append(heading);
+    const fields=[];
+    const paragraph=(text)=>{const p=document.createElement('p');p.textContent=text;block.append(p)};
+    const choose=(options,caption)=>{
+      const wrap=document.createElement('div');wrap.className='field';
+      const label=document.createElement('label');label.textContent=caption;
+      const select=document.createElement('select');select.add(new Option('Жауапты таңдаңыз',''));
+      options.forEach((x,j)=>select.add(new Option(String(x),String(j))));
+      wrap.append(label,select);block.append(wrap);fields.push(select);
+    };
+    if(t.type==='quiz'){paragraph(t.question||'');
+      const wrap=document.createElement('div');wrap.className='options';
+      (t.options||[]).forEach((opt,j)=>{const label=document.createElement('label');label.className='option';const radio=document.createElement('input');radio.type='radio';radio.name='api_'+t.id;radio.value=String(j);label.append(radio,document.createTextNode(String(opt)));wrap.append(label)});
+      block.append(wrap);
+    }else if(t.type==='quiz_set'){
+      (t.questions||[]).forEach((q,j)=>{paragraph(`${j+1}. ${q.question}`);choose(q.options||[],`${j+1}-сұрақтың жауабы`)});
+    }else if(t.type==='matching'){
+      paragraph(t.instruction||'Сәйкестендіріңіз. Әр жауап бір рет қолданылады.');
+      (t.leftItems||[]).forEach((left,j)=>choose(t.choices||[],`${j+1}. ${left}`));
+    }else if(t.type==='short_set'){
+      (t.questions||[]).forEach((q,j)=>{paragraph(`${j+1}. ${q.question}`);choose(['0','1'],`${j+1}-сұрақтың жауабы`)});
+    }else if(t.type==='manual'){
+      paragraph(t.instruction||'Мұғалім тапсырманы бағалайды.');
+      if(t.expression)paragraph('Өрнек: '+t.expression);
+      if(t.groups?.length)paragraph('Топтар: '+t.groups.join(', '));
+      paragraph('Бағаны мұғалім «Нәтижелер» бөлімінде жеке қояды.');
+    }else paragraph('Бұл тапсырма түріне қолдау жоқ.');
+    const result=document.createElement('div');result.className='notice hidden';
+    if(t.submitted){result.className='notice good';result.textContent=`Жауап қабылданған. Ұпай: ${t.score ?? '—'} / ${t.points}`;}
+    else if(t.type==='manual'){result.className='notice';result.textContent='Мұғалімнің бағасын күтіңіз.';}
+    else if(['quiz','quiz_set','matching','short_set'].includes(t.type)){
+      const send=document.createElement('button');send.textContent='Жауапты жіберу';
+      send.onclick=async()=>{
+        let payload={action:'submitAnswer',code:session.code,studentId:student.id,taskId:t.id,...(studentToken?{studentToken}:{})};
+        if(t.type==='quiz'){
+          const checked=block.querySelector('input[type="radio"]:checked');
+          if(!checked){result.textContent='Жауапты таңдаңыз.';result.className='notice warn';return;}
+          payload.answerIndex=Number(checked.value);
+        }else{
+          if(fields.some(f=>f.value==='')){result.textContent='Барлық жауапты толтырыңыз.';result.className='notice warn';return;}
+          if(t.type==='matching'){
+            const choices=t.choices||[];payload.answers=fields.map(f=>choices[Number(f.value)]);
+            if(new Set(payload.answers).size!==payload.answers.length){result.textContent='Әр сәйкестікті бір рет таңдаңыз.';result.className='notice warn';return;}
+          }else if(t.type==='short_set')payload.answers=fields.map(f=>['0','1'][Number(f.value)]);
+          else payload.answers=fields.map(f=>Number(f.value));
+        }
+        send.disabled=true;
+        try{const response=await studentApiCall(payload);result.textContent=`Жауап қабылданды. Ұпай: ${response.score}/${response.maxPoints}`;result.className='notice good';send.remove();fields.forEach(f=>f.disabled=true);block.querySelectorAll('input[type="radio"]').forEach(x=>x.disabled=true);
+          $('studentTotal').textContent=Number($('studentTotal').textContent||0)+Number(response.score||0);
+        }catch(e){result.textContent='Қате: '+(e.message||e);result.className='notice error';send.disabled=false;}
+      };block.append(send);
+    }
+    block.append(result);area.append(block);
+  });
 }
 
 async function submitAnswer(taskId){const t=tasks.find(x=>x.id===taskId);if(!student||!t)return;let answer='';if(t.type==='quiz'){const checked=document.querySelector(`input[name="ans_${taskId}"]:checked`);if(!checked){note('Жауап нұсқасын таңдаңыз.','warn');return}answer=checked.value}else answer=$('ans_'+taskId)?.value.trim()||'';if(!answer){note('Жауапты енгізіңіз.','warn');return}let score=0,pending=false,feedback='';if(t.type==='quiz'){score=Number(answer)===t.correct?t.points:0;feedback=score?'Дұрыс жауап!':'Қате жауап.'}else if(t.type==='short'){score=t.correct.some(x=>x===answer.toLowerCase())?t.points:0;feedback=score?'Дұрыс жауап!':'Жауап қабылданды.'}else if(t.type==='match'){const lines=answer.split('\n').map(x=>x.trim().toLowerCase()).filter(Boolean);const expected=t.pairs.map(x=>x[1].toLowerCase());const n=expected.filter((x,i)=>lines[i]===x).length;score=Math.round(t.points*n/expected.length);feedback='Автоматты салыстырылды.'}else{pending=true;feedback='Мұғалім тексеруін күтуде.'}
@@ -468,6 +477,7 @@ async function teacherLoadResults(silent=false){
     latestRankingData=result;
     renderGrouping();
     renderManualGrades();
+    renderServerManualGrades();
     if(raceVisible){
       const live=$('raceLiveStatus');
       if(live){live.textContent='● Автоматты жаңарту: 5 секунд · Тексерілді '+new Date().toLocaleTimeString('kk-KZ');live.style.color='#9af3cf';}
@@ -552,10 +562,11 @@ function renderManualGrades(){
   const area=$('manualGradeRows'), notice=$('manualGradeNotice');
   area.replaceChildren();
   if(!latestRankingData){notice.textContent='Алдымен мұғалім ретінде кіріп, нәтижелерді жүктеңіз.';return;}
+  if(groupingCode()==='LOG9B'){notice.textContent='LOG9B бағалары төменде серверге сақталады.';return;}
   const st=groupingGet(), draft=manualGradeDraft();
   const pupils=new Map(latestRankingData.students.map(p=>[p.id,p]));
   if(!st.groups){notice.textContent='Алдымен «🎲 2 топқа бөлу» арқылы топтарды анықтаңыз.';return;}
-  notice.textContent='Сынақ бағалары тек осы браузерде сақталады. Сервердегі ұпайлар өзгермейді.';
+  notice.textContent=groupingCode()==='LOG9B'?'Бағалар серверге сақталады. Топтық және жұптық жұмысқа жеке баға қойыңыз.':'Бұл сабақтың топтық бағалары тек браузерде сақталады.';
   const groups=st.groups, names=st.names||['Қыран','Құмай'];
   const grid=document.createElement('div');grid.className='grid';
   for(let i=0;i<2;i++){
@@ -580,6 +591,41 @@ function renderManualGrades(){
   area.append(grid);
 }
 
+async function saveServerManualGrade(studentId,taskId,score,output){
+  output.textContent='Сақталуда...';
+  try{
+    const client=await teacherGetClient();
+    const {data:{session:authSession}}=await client.auth.getSession();
+    if(!authSession)throw new Error('Мұғалім ретінде қайта кіріңіз');
+    const data=await fetch(STUDENT_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authSession.access_token},body:JSON.stringify({action:'gradeManual',code:$('teacherLessonCode').value.trim().toUpperCase(),studentId,taskId,score})});
+    const result=await data.json();if(!data.ok||!result.success)throw new Error(result.error||'Сақтау қатесі');
+    output.textContent='✓ Серверге сақталды';await teacherLoadResults(true);
+  }catch(e){output.textContent='Қате: '+(e.message||e);}
+}
+function renderServerManualGrades(){
+  let host=$('serverManualGradeRows');
+  if(!host){host=document.createElement('div');host.id='serverManualGradeRows';$('manualGroupGradePanel').append(host)}
+  host.replaceChildren();
+  if(groupingCode()!=='LOG9B'||!latestRankingData)return;
+  const result=latestRankingData,manualTasks=result.tasks.filter(t=>['LOG9B_PAIR','LOG9B_GROUP'].includes(t.id));
+  if(!manualTasks.length)return;
+  $('manualGradeRows').replaceChildren();
+  $('manualGradeNotice').textContent='LOG9B сабағы: төмендегі бағалар серверге сақталады.';
+  for(const t of manualTasks){
+    const title=document.createElement('h3');title.textContent=t.title+' — әр оқушыға жеке баға';host.append(title);
+    for(const pupil of result.students){
+      const row=document.createElement('div');row.className='row';row.style.margin='8px 0';
+      const name=document.createElement('span');name.textContent=pupil.name;
+      const sel=document.createElement('select');sel.style.maxWidth='130px';
+      [['','— Баға —'],['0','0 ұпай'],['1','1 ұпай'],['2','2 ұпай']].forEach(([v,label])=>sel.add(new Option(label,v)));
+      const existing=result.submissions.find(x=>x.student_id===pupil.id&&x.task_id===t.id);
+      sel.value=existing?String(existing.score):'';
+      const output=document.createElement('small');output.className='muted';
+      sel.onchange=()=>{if(sel.value!=='')saveServerManualGrade(pupil.id,t.id,Number(sel.value),output)};
+      row.append(name,sel,output);host.append(row);
+    }
+  }
+}
 // Supabase құпиясөзді қалпына келтіру сілтемесін өңдеу.
 let recoveryReady=false;
 function recoveryMessage(message,kind=''){
